@@ -1,0 +1,8 @@
+numpy
+pandas==2.2.3
+pydantic==2.11.4
+notebook
+jupyterlab
+requests
+click
+krkn-lib@git+https://github.com/krkn-chaos/krkn-lib
