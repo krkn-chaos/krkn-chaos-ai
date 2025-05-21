@@ -2,6 +2,9 @@ import yaml
 import shlex
 import subprocess
 from chaos_ai.models.config import ConfigFile
+from chaos_ai.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 def read_config_from_file(file_path: str) -> ConfigFile:
@@ -15,6 +18,7 @@ def run_shell(command):
     '''
     Run shell command and get logs and statuscode in output.
     '''
+    logger.info("Running command: %s", command)
     logs = ""
     command = shlex.split(command)
     process = subprocess.Popen(
@@ -23,4 +27,5 @@ def run_shell(command):
     for line in process.stdout:
         logs += line
     process.wait()
+    logger.info("Run Status: %d", process.returncode)
     return logs, process.returncode

@@ -4,7 +4,6 @@ from chaos_ai.utils.fs import read_config_from_file
 from chaos_ai.utils.logger import get_module_logger
 
 from chaos_ai.algorithm.genetic import GeneticAlgorithm
-from chaos_ai.chaos_engines.krkn_hub_runner import KrknHubRunner
 
 logger = get_module_logger(__name__)
 

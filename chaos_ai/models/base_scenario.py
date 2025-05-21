@@ -16,6 +16,17 @@ class Scenario(BaseModel):
         param_value = ", ".join([str(x.value) for x in self.parameters])
         return f"{self.name}({param_value})"
 
+    def __eq__(self, other):
+        if not isinstance(other, Scenario):
+            return NotImplemented
+        self_params = ", ".join([str(x.value) for x in self.parameters])
+        other_params = ", ".join([str(x.value) for x in other.parameters])
+        return self.name == other.name and self_params == other_params
+
+    def __hash__(self):
+        self_params = ", ".join([str(x.value) for x in self.parameters])
+        return hash((self.name, self_params))
+
 
 class ScenarioFactory:
     @staticmethod
