@@ -41,7 +41,7 @@ class DisruptionCountParameter(BaseParameter):
     max_value: int = 25  # some arbitrary value
 
     def mutate(self):
-        self.value = random.randint(1, self.max_pod_count)
+        self.value = random.randint(1, self.max_value)
 
 
 class KillTimeoutParameter(BaseParameter):

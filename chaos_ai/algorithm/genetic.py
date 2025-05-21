@@ -51,7 +51,7 @@ class GeneticAlgorithm:
 
             # Repopulate off-springs
             self.population = []
-            for _ in range(self.population // 2):
+            for _ in range(self.config.population_size // 2):
                 parent1, parent2 = self.select_parents(fitness_scores)
                 child1, child2 = self.crossover(
                     copy.deepcopy(parent1), copy.deepcopy(parent2)
@@ -114,7 +114,7 @@ class GeneticAlgorithm:
         common_params = set([x.name for x in scenario_a.parameters]) & set(
             [x.name for x in scenario_b.parameters]
         )
-        
+
         def find_param_index(scenario: Scenario, param_name):
             for i, param in enumerate(scenario.parameters):
                 if param_name == param.name:

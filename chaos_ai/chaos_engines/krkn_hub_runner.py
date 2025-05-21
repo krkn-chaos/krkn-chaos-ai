@@ -1,5 +1,6 @@
 import json
 import datetime
+import random
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
 from chaos_ai.models.app import CommandRunResult
@@ -36,6 +37,8 @@ class KrknHubRunner:
         start_time = datetime.datetime.now()
 
         log, returncode = run_shell(command)
+        # log = ""
+        # returncode = 0
 
         end_time = datetime.datetime.now()
 
@@ -63,9 +66,10 @@ class KrknHubRunner:
         logger.info("Prometheus URL: %s", url)
         # logger.info("Token: %s", token)
 
-        return KrknPrometheus(f"https://{url}", token.strip)
+        return KrknPrometheus(f"https://{url}", token.strip())
 
     def calculate_fitness(self, start, end):
+        # return random.randint(0, 10)
         try:
             result_at_beginning = self.prom_client.process_prom_query_in_range(
                 self.config.fitness_function,
