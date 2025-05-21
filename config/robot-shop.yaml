@@ -1,6 +1,6 @@
 kubeconfig_file_path: "./tmp/kubeconfig.yaml"
 
-generations: 1
+generations: 2
 population_size: 2
 
 fitness_function: 'sum(kube_pod_container_status_restarts_total{namespace="robot-shop"})'
@@ -9,7 +9,6 @@ scenario:
   pod-scenarios:
     namespace:
       - robot-shop
-      - openshift-.* 
     pod_label:
       - service=mysql
       - service=redis

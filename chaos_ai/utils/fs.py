@@ -25,6 +25,7 @@ def run_shell(command):
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
     for line in process.stdout:
+        logger.info("%s", line)
         logs += line
     process.wait()
     logger.info("Run Status: %d", process.returncode)

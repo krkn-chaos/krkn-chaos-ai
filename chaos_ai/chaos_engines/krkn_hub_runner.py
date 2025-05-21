@@ -54,7 +54,7 @@ class KrknHubRunner:
         prom_spec_json, _ = run_shell(
             f"kubectl --kubeconfig={self.config.kubeconfig_file_path} -n openshift-monitoring get route -l app.kubernetes.io/name=thanos-query -o json"
         )
-        prom_spec_json = json.loads                     (prom_spec_json)
+        prom_spec_json = json.loads(prom_spec_json)
         url = prom_spec_json['items'][0]['spec']['host']
 
         token, _ = run_shell(
@@ -63,7 +63,7 @@ class KrknHubRunner:
         logger.info("Prometheus URL: %s", url)
         # logger.info("Token: %s", token)
 
-        return KrknPrometheus(f"https://{url}", token)
+        return KrknPrometheus(f"https://{url}", token.strip)
 
     def calculate_fitness(self, start, end):
         try:

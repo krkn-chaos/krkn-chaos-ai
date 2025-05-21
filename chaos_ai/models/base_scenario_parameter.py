@@ -46,7 +46,7 @@ class DisruptionCountParameter(BaseParameter):
 
 class KillTimeoutParameter(BaseParameter):
     name: str = "KILL_TIMEOUT"
-    value: int = 180
+    value: int = 120
 
     def mutate(self):
         self.value = self.value
@@ -54,7 +54,7 @@ class KillTimeoutParameter(BaseParameter):
 
 class ExpRecoveryTimeParameter(BaseParameter):
     name: str = "EXPECTED_RECOVERY_TIME"
-    value: int = 120
+    value: int = 60
 
     def mutate(self):
         self.value = self.value
@@ -62,7 +62,7 @@ class ExpRecoveryTimeParameter(BaseParameter):
 
 class DurationParameter(BaseParameter):
     name: str = "DURATION"
-    value: int = 300
+    value: int = 120
 
     def mutate(self):
         if random.random() < 0.5:
