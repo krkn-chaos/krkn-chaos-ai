@@ -1,0 +1,33 @@
+kubeconfig_file_path: "tmp/kubeconfig.yaml"
+
+generations: 10
+population_size: 4
+
+fitness_function: ""
+
+scenario:
+  pod-scenarios:
+    namespace:
+      - robot-shop
+      - openshift-.* 
+    pod_label:
+      - service=mysql
+      - service=redis
+      - service=cart
+      - service=mongodb
+      - service=rabbitmq
+      - service=user
+      - service=shipping
+    
+  application-outages:
+    namespace:
+      - robot-shop
+    pod_selector:
+      - "{service: mysql}"
+      - "{service: redis}"
+      - "{service: cart}"
+      - "{service: mongodb}"
+      - "{service: user}"
+      - "{service: shipping}"
+      - "{service: rabbitmq}"
+
