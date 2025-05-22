@@ -152,4 +152,7 @@ class GeneticAlgorithm:
         ) as f:
             data = list(self.seen_population.values())
             data = [x.model_dump() for x in data]
+            for i in range(len(data)):
+                data[i]['start_time'] = (data[i]['start_time']).isoformat()
+                data[i]['end_time'] = (data[i]['end_time']).isoformat()
             json.dump(data, f, indent=4)
