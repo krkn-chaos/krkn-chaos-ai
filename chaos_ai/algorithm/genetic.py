@@ -1,4 +1,6 @@
+import os
 import copy
+import json
 import random
 from typing import List
 
@@ -140,3 +142,14 @@ class GeneticAlgorithm:
                     scenario_b.parameters[b_index].value = valueA
 
             return scenario_a, scenario_b
+
+    def save(self, output_dir: str):
+        logger.info("Generating population.json")
+        with open(
+            os.path.join(output_dir, "all_population.json"),
+            "w",
+            encoding="utf-8"
+        ) as f:
+            data = list(self.seen_population.values())
+            data = [x.model_dump() for x in data]
+            json.dump(data, f, indent=4)

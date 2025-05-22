@@ -1,6 +1,6 @@
 kubeconfig_file_path: "./tmp/kubeconfig.yaml"
 
-generations: 2
+generations: 1
 population_size: 2
 
 fitness_function: 'sum(kube_pod_container_status_restarts_total{namespace="robot-shop"})'

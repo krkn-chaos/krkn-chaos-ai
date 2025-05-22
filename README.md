@@ -29,3 +29,9 @@ Options:
   -k, --kubeconfig TEXT  Path to valid kubeconfig file.
   --help                 Show this message and exit.
 ```
+
+## Running test with Chaos AI
+
+```
+$ uv run chaos_ai run -c config/robot-shop.yaml -o ./tmp/result/
+```

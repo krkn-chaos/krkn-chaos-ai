@@ -15,7 +15,8 @@ def main():
 
 @main.command()
 @click.option('--config', '-c', help='Path to chaos ai config file.')
-def run(config: str):
+@click.option('--output', '-o', help='Directory to save result.')
+def run(config: str, output: str = "./"):
     if config == '' or config is None:
         logger.warning("Config file invalid.")
         exit(1)
@@ -30,3 +31,5 @@ def run(config: str):
 
     genetic = GeneticAlgorithm(parsed_config)
     genetic.simulate()
+
+    genetic.save(output)
