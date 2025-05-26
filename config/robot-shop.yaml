@@ -30,3 +30,11 @@ scenario:
       - "{service: shipping}"
       - "{service: rabbitmq}"
 
+  container-scenarios:
+    namespace:
+    - openshift-dns
+    label_selector:
+    - dns.operator.openshift.io/daemonset-dns=default
+    container_name:
+    - dns
+    - kube-rbac-proxy

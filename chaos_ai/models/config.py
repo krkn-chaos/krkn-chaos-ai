@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -13,9 +13,22 @@ class AppOutageScenarioConfig(BaseModel):
     pod_selector: List[str] = []
 
 
+class ContainerScenarioConfig(BaseModel):
+    namespace: List[str] = []
+    label_selector: List[str] = []
+    container_name: List[str] = []
+
+
 class ScenarioConfig(BaseModel):
-    application_outages: AppOutageScenarioConfig = Field(alias='application-outages')
-    pod_scenarios: PodScenarioConfig = Field(alias='pod-scenarios')
+    application_outages: Optional[AppOutageScenarioConfig] = Field(
+        alias="application-outages", default=None
+    )
+    pod_scenarios: Optional[PodScenarioConfig] = Field(
+        alias="pod-scenarios", default=None
+    )
+    container_scenarios: Optional[ContainerScenarioConfig] = Field(
+        alias="container-scenarios", default=None
+    )
 
 
 class ConfigFile(BaseModel):
@@ -26,4 +39,4 @@ class ConfigFile(BaseModel):
 
     fitness_function: str  # PromQL fitness function
 
-    scenario: ScenarioConfig
+    scenario: ScenarioConfig = ScenarioConfig()

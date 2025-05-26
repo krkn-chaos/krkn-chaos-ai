@@ -3,6 +3,7 @@ from typing import List
 from pydantic import BaseModel
 import chaos_ai.models.base_scenario_parameter as param
 from chaos_ai.models.config import ConfigFile
+from chaos_ai.models.custom_errors import EmptyConfigError
 from chaos_ai.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -33,16 +34,34 @@ class ScenarioFactory:
     def generate_random_scenario(
         config: ConfigFile,
     ):
-        scenario = random.choice(['pod-scenarios', 'application-outages'])
+        scenario = random.choice(["pod-scenarios", "application-outages"])
         try:
-            if scenario == 'pod-scenarios':
+            if (
+                scenario == "pod-scenarios"
+                and config.scenario.pod_scenarios is not None
+            ):
                 return ScenarioFactory.create_pod_scenario(
                     **config.scenario.pod_scenarios.model_dump()
                 )
-            elif scenario == 'application-outages':
+            elif (
+                scenario == "application-outages"
+                and config.scenario.application_outages is not None
+            ):
                 return ScenarioFactory.create_application_outage_scenario(
                     **config.scenario.application_outages.model_dump()
                 )
+            elif (
+                scenario == "container-scenarios"
+                and config.scenario.container_scenarios is not None
+            ):
+                return ScenarioFactory.create_container_scenario(
+                    **config.scenario.container_scenarios.model_dump()
+                )
+            raise EmptyConfigError(
+                "No scenarios found. Please provide atleast 1 scenario."
+            )
+        except EmptyConfigError as e:
+            raise e
         except Exception as error:
             logger.error("Unable to generate scenario: %s", error)
 
@@ -91,5 +110,32 @@ class ScenarioFactory:
                     value=random.choice(pod_selector),
                 ),
                 param.BlockTrafficType(),
-            ]
+            ],
+        )
+
+    @staticmethod
+    def create_container_scenario(
+        namespace: List[str],
+        label_selector: List[str],
+        container_name: List[str]
+    ):
+        return Scenario(
+            name="container-scenarios",
+            parameters=[
+                param.NamespaceParameter(
+                    possible_values=namespace,
+                    value=random.choice(namespace),
+                ),
+                param.LabelSelectorParameter(
+                    possible_values=label_selector,
+                    value=random.choice(label_selector),
+                ),
+                param.DisruptionCountParameter(),
+                param.ContainerNameParameter(
+                    possible_values=container_name,
+                    value=random.choice(container_name)
+                ),
+                param.ActionParameter(),
+                param.ExpRecoveryTimeParameter(),
+            ],
         )

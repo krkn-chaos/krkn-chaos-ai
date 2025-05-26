@@ -57,7 +57,7 @@ class ExpRecoveryTimeParameter(BaseParameter):
     value: int = 60
 
     def mutate(self):
-        self.value = self.value
+        pass
 
 
 class DurationParameter(BaseParameter):
@@ -86,6 +86,33 @@ class BlockTrafficType(BaseParameter):
     name: str = "BLOCK_TRAFFIC_TYPE"
     value: str = "[Ingress, Egress]"
     possible_values: List[str] = ["[Ingress, Egress]", "[Ingress]", "[Egress]"]
+
+    def mutate(self):
+        self.value = random.choice(self.possible_values)
+
+
+class LabelSelectorParameter(BaseParameter):
+    name: str = "LABEL_SELECTOR"
+    value: str  # Example Value: k8s-app=etcd
+    possible_values: List[str] = []
+
+    def mutate(self):
+        self.value = random.choice(self.possible_values)
+
+
+class ContainerNameParameter(BaseParameter):
+    name: str = "CONTAINER_NAME"
+    value: str  # Example Value: etcd
+    possible_values: List[str] = []
+
+    def mutate(self):
+        self.value = random.choice(self.possible_values)
+
+
+class ActionParameter(BaseParameter):
+    name: str = "ACTION"
+    value: str = "1"
+    possible_values: List[str] = ["1", "9"]
 
     def mutate(self):
         self.value = random.choice(self.possible_values)

@@ -1,0 +1,2 @@
+class EmptyConfigError(Exception):
+    pass

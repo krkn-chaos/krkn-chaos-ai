@@ -12,7 +12,7 @@ from chaos_ai.utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
 
-PODMAN_TEMPLATE = 'podman run --env-host=true -e TELEMETRY_PROMETHEUS_BACKUP="False" -e WAIT_DURATION=0 {env_list} --net=host -v {kubeconfig}:/home/krkn/.kube/config:Z containers.krkn-chaos.dev/krkn-chaos/krkn-hub:{name}'
+PODMAN_TEMPLATE = 'podman run --env-host=true -e PUBLISH_KRAKEN_STATUS="False" -e TELEMETRY_PROMETHEUS_BACKUP="False" -e WAIT_DURATION=0 {env_list} --net=host -v {kubeconfig}:/home/krkn/.kube/config:Z containers.krkn-chaos.dev/krkn-chaos/krkn-hub:{name}'
 
 
 class KrknHubRunner:
@@ -53,18 +53,18 @@ class KrknHubRunner:
         )
 
     def __connect_prom_client(self):
-        # | jq --raw-output '.items[0].spec.host'
+        # Fetch Prometheus query endpoint
         prom_spec_json, _ = run_shell(
             f"kubectl --kubeconfig={self.config.kubeconfig_file_path} -n openshift-monitoring get route -l app.kubernetes.io/name=thanos-query -o json"
         )
         prom_spec_json = json.loads(prom_spec_json)
         url = prom_spec_json['items'][0]['spec']['host']
 
+        # Fetch K8s token to access internal service
         token, _ = run_shell(
-            "oc whoami -t"
+            f"oc --kubeconfig={self.config.kubeconfig_file_path} whoami -t"
         )
         logger.info("Prometheus URL: %s", url)
-        # logger.info("Token: %s", token)
 
         return KrknPrometheus(f"https://{url}", token.strip())
 
