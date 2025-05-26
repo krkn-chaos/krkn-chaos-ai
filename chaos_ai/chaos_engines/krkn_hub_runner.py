@@ -1,6 +1,5 @@
 import json
 import datetime
-import random
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
 from chaos_ai.models.app import CommandRunResult
@@ -31,7 +30,7 @@ class KrknHubRunner:
         command = PODMAN_TEMPLATE.format(
             env_list=env_list,
             kubeconfig=self.config.kubeconfig_file_path,
-            name=scenario.name
+            name=scenario.name,
         )
 
         start_time = datetime.datetime.now()
@@ -49,7 +48,7 @@ class KrknHubRunner:
             returncode=returncode,
             start_time=start_time,
             end_time=end_time,
-            fitness_score=self.calculate_fitness(start_time, end_time)
+            fitness_score=self.calculate_fitness(start_time, end_time),
         )
 
     def __connect_prom_client(self):
@@ -58,11 +57,12 @@ class KrknHubRunner:
             f"kubectl --kubeconfig={self.config.kubeconfig_file_path} -n openshift-monitoring get route -l app.kubernetes.io/name=thanos-query -o json"
         )
         prom_spec_json = json.loads(prom_spec_json)
-        url = prom_spec_json['items'][0]['spec']['host']
+        url = prom_spec_json["items"][0]["spec"]["host"]
 
         # Fetch K8s token to access internal service
         token, _ = run_shell(
-            f"oc --kubeconfig={self.config.kubeconfig_file_path} whoami -t"
+            f"oc --kubeconfig={self.config.kubeconfig_file_path} whoami -t",
+            do_not_log=True,
         )
         logger.info("Prometheus URL: %s", url)
 
@@ -75,15 +75,15 @@ class KrknHubRunner:
                 self.config.fitness_function,
                 start_time=start,
                 end_time=start,
-                granularity=100
-            )[0]['values'][-1][1]
+                granularity=100,
+            )[0]["values"][-1][1]
 
             result_at_end = self.prom_client.process_prom_query_in_range(
                 self.config.fitness_function,
                 start_time=end,
                 end_time=end,
-                granularity=100
-            )[0]['values'][-1][1]
+                granularity=100,
+            )[0]["values"][-1][1]
 
             return float(result_at_end) - float(result_at_beginning)
         except Exception as error:

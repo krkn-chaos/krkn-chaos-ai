@@ -1,11 +1,12 @@
 import random
 
-from typing import List
+from typing import List, Any
 from pydantic import BaseModel
 
 
 class BaseParameter(BaseModel):
     name: str
+    value: Any
 
 
 class NamespaceParameter(BaseParameter):
@@ -46,7 +47,7 @@ class DisruptionCountParameter(BaseParameter):
 
 class KillTimeoutParameter(BaseParameter):
     name: str = "KILL_TIMEOUT"
-    value: int = 120
+    value: int = 60
 
     def mutate(self):
         self.value = self.value
@@ -62,7 +63,7 @@ class ExpRecoveryTimeParameter(BaseParameter):
 
 class DurationParameter(BaseParameter):
     name: str = "DURATION"
-    value: int = 120
+    value: int = 60
 
     def mutate(self):
         if random.random() < 0.5:

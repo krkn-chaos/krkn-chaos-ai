@@ -14,7 +14,7 @@ def read_config_from_file(file_path: str) -> ConfigFile:
     return ConfigFile(**config)
 
 
-def run_shell(command):
+def run_shell(command, do_not_log=False):
     '''
     Run shell command and get logs and statuscode in output.
     '''
@@ -25,7 +25,8 @@ def run_shell(command):
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
     for line in process.stdout:
-        logger.info("%s", line)
+        if not do_not_log:
+            logger.info("%s", line.rstrip())
         logs += line
     process.wait()
     logger.info("Run Status: %d", process.returncode)
