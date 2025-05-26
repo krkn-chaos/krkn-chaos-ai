@@ -34,7 +34,14 @@ class ScenarioFactory:
     def generate_random_scenario(
         config: ConfigFile,
     ):
-        scenario = random.choice(["pod-scenarios", "application-outages"])
+        scenario = random.choice(
+            [
+                "pod-scenarios",
+                "application-outages",
+                "container-scenarios",
+                "node-cpu-hog",
+            ]
+        )
         try:
             if (
                 scenario == "pod-scenarios"
@@ -56,6 +63,12 @@ class ScenarioFactory:
             ):
                 return ScenarioFactory.create_container_scenario(
                     **config.scenario.container_scenarios.model_dump()
+                )
+            elif (
+                scenario == "node-cpu-hog" and config.scenario.node_cpu_hog is not None
+            ):
+                return ScenarioFactory.create_container_scenario(
+                    **config.scenario.node_cpu_hog.model_dump()
                 )
             raise EmptyConfigError(
                 "No scenarios found. Please provide atleast 1 scenario."
@@ -115,9 +128,7 @@ class ScenarioFactory:
 
     @staticmethod
     def create_container_scenario(
-        namespace: List[str],
-        label_selector: List[str],
-        container_name: List[str]
+        namespace: List[str], label_selector: List[str], container_name: List[str]
     ):
         return Scenario(
             name="container-scenarios",
@@ -132,10 +143,27 @@ class ScenarioFactory:
                 ),
                 param.DisruptionCountParameter(),
                 param.ContainerNameParameter(
-                    possible_values=container_name,
-                    value=random.choice(container_name)
+                    possible_values=container_name, value=random.choice(container_name)
                 ),
                 param.ActionParameter(),
                 param.ExpRecoveryTimeParameter(),
+            ],
+        )
+
+    @staticmethod
+    def create_cpu_hog_scenario(node_selector: List[str], taints: List[str]):
+        return Scenario(
+            name="node-cpu-hog",
+            parameters=[
+                param.TotalChaosDurationParameter(),
+                param.NodeCPUCoreParameter(),
+                param.NodeCPUPercentageParameter(),
+                param.NamespaceParameter(value="default", possible_values=["default"]),
+                param.NodeSelectorParameter(
+                    possible_values=node_selector, value=random.choice(node_selector)
+                ),
+                param.TaintParameter(value=taints),
+                param.NumberOfNodesParameter(),
+                param.CPUHogImageParameter(),
             ],
         )

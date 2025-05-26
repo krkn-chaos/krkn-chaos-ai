@@ -19,6 +19,11 @@ class ContainerScenarioConfig(BaseModel):
     container_name: List[str] = []
 
 
+class NodeCPUHogScenarioConfig(BaseModel):
+    node_selector: List[str] = []
+    taints: List[str] = []
+
+
 class ScenarioConfig(BaseModel):
     application_outages: Optional[AppOutageScenarioConfig] = Field(
         alias="application-outages", default=None
@@ -28,6 +33,9 @@ class ScenarioConfig(BaseModel):
     )
     container_scenarios: Optional[ContainerScenarioConfig] = Field(
         alias="container-scenarios", default=None
+    )
+    node_cpu_hog: Optional[NodeCPUHogScenarioConfig] = Field(
+        alias="node-cpu-hog", default=None
     )
 
 

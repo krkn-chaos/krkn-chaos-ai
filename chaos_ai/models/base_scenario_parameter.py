@@ -117,3 +117,78 @@ class ActionParameter(BaseParameter):
 
     def mutate(self):
         self.value = random.choice(self.possible_values)
+
+
+class TotalChaosDurationParameter(BaseParameter):
+    name: str = "TOTAL_CHAOS_DURATION"
+    value: int = 60
+
+    def mutate(self):
+        pass
+
+
+class NodeCPUCoreParameter(BaseParameter):
+    name: str = "NODE_CPU_CORE"
+    value: int = 2
+
+    def mutate(self):
+        if random.random() < 0.5:
+            self.value += random.randint(1, 15) * self.value / 100
+        else:
+            self.value -= random.randint(1, 15) * self.value / 100
+        self.value = int(self.value)
+        self.value = max(self.value, 1)
+        self.value = min(self.value, 32)
+
+
+class NodeCPUPercentageParameter(BaseParameter):
+    name: str = "NODE_CPU_PERCENTAGE"
+    value: int = 50
+
+    def mutate(self):
+        if random.random() < 0.5:
+            self.value += random.randint(1, 35) * self.value / 100
+        else:
+            self.value -= random.randint(1, 25) * self.value / 100
+        self.value = int(self.value)
+        self.value = max(self.value, 1)
+        self.value = min(self.value, 100)
+
+
+class NodeSelectorParameter(BaseParameter):
+    name: str = "NODE_SELECTOR"
+    value: str = ""
+    possible_values: List[str] = ["1", "9"]
+
+    def mutate(self):
+        self.value = random.choice(self.possible_values)
+
+
+class TaintParameter(BaseParameter):
+    name: str = "TAINTS"
+    value: List[str] = []
+
+    def mutate(self):
+        pass
+
+
+class NumberOfNodesParameter(BaseParameter):
+    name: str = "NUMBER_OF_NODES"
+    value: int = 1
+
+    def mutate(self):
+        if random.random() < 0.5:
+            self.value += random.randint(1, 15) * self.value / 100
+        else:
+            self.value -= random.randint(1, 15) * self.value / 100
+        self.value = int(self.value)
+        self.value = max(self.value, 1)
+        self.value = min(self.value, 16)
+
+
+class CPUHogImageParameter(BaseParameter):
+    name: str = "IMAGE"
+    value: str = "quay.io/krkn-chaos/krkn-hog"
+
+    def mutate(self):
+        pass
