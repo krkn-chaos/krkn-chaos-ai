@@ -166,10 +166,11 @@ class NodeSelectorParameter(BaseParameter):
 
 class TaintParameter(BaseParameter):
     name: str = "TAINTS"
-    value: List[str] = []
+    value: str = '[]'
+    possible_values: List[str]
 
     def mutate(self):
-        pass
+        self.value = random.choice(self.possible_values)
 
 
 class NumberOfNodesParameter(BaseParameter):

@@ -34,14 +34,25 @@ class ScenarioFactory:
     def generate_random_scenario(
         config: ConfigFile,
     ):
-        scenario = random.choice(
-            [
-                "pod-scenarios",
-                "application-outages",
-                "container-scenarios",
-                "node-cpu-hog",
-            ]
-        )
+        # Pick random available choice to try
+        choices = []
+
+        if config.scenario.pod_scenarios is not None:
+            choices.append("pod-scenarios")
+        elif config.scenario.application_outages is not None:
+            choices.append("application-outages")
+        elif config.scenario.container_scenarios is not None:
+            choices.append("container-scenarios")
+        elif config.scenario.node_cpu_hog is not None:
+            choices.append("node-cpu-hog")
+
+        if len(choices) == 0:
+            raise EmptyConfigError(
+                "No scenarios found. Please provide atleast 1 scenario."
+            )
+
+        scenario = random.choice(choices)
+
         try:
             if (
                 scenario == "pod-scenarios"
@@ -67,14 +78,9 @@ class ScenarioFactory:
             elif (
                 scenario == "node-cpu-hog" and config.scenario.node_cpu_hog is not None
             ):
-                return ScenarioFactory.create_container_scenario(
+                return ScenarioFactory.create_cpu_hog_scenario(
                     **config.scenario.node_cpu_hog.model_dump()
                 )
-            raise EmptyConfigError(
-                "No scenarios found. Please provide atleast 1 scenario."
-            )
-        except EmptyConfigError as e:
-            raise e
         except Exception as error:
             logger.error("Unable to generate scenario: %s", error)
 
@@ -162,7 +168,7 @@ class ScenarioFactory:
                 param.NodeSelectorParameter(
                     possible_values=node_selector, value=random.choice(node_selector)
                 ),
-                param.TaintParameter(value=taints),
+                param.TaintParameter(possible_values=taints, value=random.choice(taints)),
                 param.NumberOfNodesParameter(),
                 param.CPUHogImageParameter(),
             ],

@@ -71,10 +71,15 @@ class GeneticAlgorithm:
         logger.info("Creating random population")
         logger.info("Population Size: %d", self.config.population_size)
 
+        already_seen = set()
+
         while len(self.population) != self.config.population_size:
             scenario = ScenarioFactory.generate_random_scenario(self.config)
-            if scenario:
+            # Mutate to generate initial randomness among same tests
+            scenario = self.mutate(scenario)
+            if scenario and scenario not in already_seen:
                 self.population.append(scenario)
+                already_seen.add(scenario)
 
         if DEBUG_MODE:
             logger.info("| Population |")
