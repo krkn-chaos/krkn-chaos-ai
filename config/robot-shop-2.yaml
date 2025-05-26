@@ -1,7 +1,7 @@
 kubeconfig_file_path: "./tmp/kubeconfig.yaml"
 
-generations: 1
-population_size: 2
+generations: 2
+population_size: 10
 
 fitness_function: 'sum(kube_pod_container_status_restarts_total{namespace="robot-shop"})'
 
@@ -16,6 +16,12 @@ scenario:
     - kube-rbac-proxy
 
   node-cpu-hog:
+    taints:
+      - '[]'
+    node_selector:
+      - ""
+
+  node-memory-hog:
     taints:
       - '[]'
     node_selector:

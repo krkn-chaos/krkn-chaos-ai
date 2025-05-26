@@ -39,12 +39,14 @@ class ScenarioFactory:
 
         if config.scenario.pod_scenarios is not None:
             choices.append("pod-scenarios")
-        elif config.scenario.application_outages is not None:
+        if config.scenario.application_outages is not None:
             choices.append("application-outages")
-        elif config.scenario.container_scenarios is not None:
+        if config.scenario.container_scenarios is not None:
             choices.append("container-scenarios")
-        elif config.scenario.node_cpu_hog is not None:
+        if config.scenario.node_cpu_hog is not None:
             choices.append("node-cpu-hog")
+        if config.scenario.node_memory_hog is not None:
+            choices.append("node-memory-hog")
 
         if len(choices) == 0:
             raise EmptyConfigError(
@@ -54,32 +56,25 @@ class ScenarioFactory:
         scenario = random.choice(choices)
 
         try:
-            if (
-                scenario == "pod-scenarios"
-                and config.scenario.pod_scenarios is not None
-            ):
+            if scenario == "pod-scenarios":
                 return ScenarioFactory.create_pod_scenario(
                     **config.scenario.pod_scenarios.model_dump()
                 )
-            elif (
-                scenario == "application-outages"
-                and config.scenario.application_outages is not None
-            ):
+            elif scenario == "application-outages":
                 return ScenarioFactory.create_application_outage_scenario(
                     **config.scenario.application_outages.model_dump()
                 )
-            elif (
-                scenario == "container-scenarios"
-                and config.scenario.container_scenarios is not None
-            ):
+            elif scenario == "container-scenarios":
                 return ScenarioFactory.create_container_scenario(
                     **config.scenario.container_scenarios.model_dump()
                 )
-            elif (
-                scenario == "node-cpu-hog" and config.scenario.node_cpu_hog is not None
-            ):
+            elif scenario == "node-cpu-hog":
                 return ScenarioFactory.create_cpu_hog_scenario(
                     **config.scenario.node_cpu_hog.model_dump()
+                )
+            elif scenario == "node-memory-hog":
+                return ScenarioFactory.create_memory_hog_scenario(
+                    **config.scenario.node_memory_hog.model_dump()
                 )
         except Exception as error:
             logger.error("Unable to generate scenario: %s", error)
@@ -170,6 +165,24 @@ class ScenarioFactory:
                 ),
                 param.TaintParameter(possible_values=taints, value=random.choice(taints)),
                 param.NumberOfNodesParameter(),
-                param.CPUHogImageParameter(),
+                param.HogScenarioImageParameter(),
+            ],
+        )
+
+    @staticmethod
+    def create_memory_hog_scenario(node_selector: List[str], taints: List[str]):
+        return Scenario(
+            name="node-memory-hog",
+            parameters=[
+                param.TotalChaosDurationParameter(),
+                param.NodeMemopryPercentageParameter(),
+                param.NumberOfWorkersParameter(),
+                param.NamespaceParameter(value="default", possible_values=["default"]),
+                param.NodeSelectorParameter(
+                    possible_values=node_selector, value=random.choice(node_selector)
+                ),
+                param.TaintParameter(possible_values=taints, value=random.choice(taints)),
+                param.NumberOfNodesParameter(),
+                param.HogScenarioImageParameter(),
             ],
         )

@@ -155,6 +155,34 @@ class NodeCPUPercentageParameter(BaseParameter):
         self.value = min(self.value, 100)
 
 
+class NodeMemopryPercentageParameter(BaseParameter):
+    name: str = "MEMORY_CONSUMPTION_PERCENTAGE"
+    value: int = 90
+
+    def mutate(self):
+        if random.random() < 0.5:
+            self.value += random.randint(1, 35) * self.value / 100
+        else:
+            self.value -= random.randint(1, 25) * self.value / 100
+        self.value = int(self.value)
+        self.value = max(self.value, 1)
+        self.value = min(self.value, 100)
+
+
+class NumberOfWorkersParameter(BaseParameter):
+    name: str = "NUMBER_OF_WORKERS"
+    value: int = 1
+
+    def mutate(self):
+        if random.random() < 0.5:
+            self.value += random.randint(1, 5) * self.value / 100
+        else:
+            self.value -= random.randint(1, 7) * self.value / 100
+        self.value = int(self.value)
+        self.value = max(self.value, 1)
+        self.value = min(self.value, 10)
+
+
 class NodeSelectorParameter(BaseParameter):
     name: str = "NODE_SELECTOR"
     value: str = ""
@@ -187,7 +215,7 @@ class NumberOfNodesParameter(BaseParameter):
         self.value = min(self.value, 16)
 
 
-class CPUHogImageParameter(BaseParameter):
+class HogScenarioImageParameter(BaseParameter):
     name: str = "IMAGE"
     value: str = "quay.io/krkn-chaos/krkn-hog"
 

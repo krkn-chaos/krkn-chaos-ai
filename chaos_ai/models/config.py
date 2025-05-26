@@ -19,7 +19,7 @@ class ContainerScenarioConfig(BaseModel):
     container_name: List[str] = []
 
 
-class NodeCPUHogScenarioConfig(BaseModel):
+class NodeHogScenarioConfig(BaseModel):
     node_selector: List[str] = []
     taints: List[str] = []
 
@@ -34,8 +34,11 @@ class ScenarioConfig(BaseModel):
     container_scenarios: Optional[ContainerScenarioConfig] = Field(
         alias="container-scenarios", default=None
     )
-    node_cpu_hog: Optional[NodeCPUHogScenarioConfig] = Field(
+    node_cpu_hog: Optional[NodeHogScenarioConfig] = Field(
         alias="node-cpu-hog", default=None
+    )
+    node_memory_hog: Optional[NodeHogScenarioConfig] = Field(
+        alias="node-memory-hog", default=None
     )
 
 
