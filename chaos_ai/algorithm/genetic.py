@@ -65,6 +65,12 @@ class GeneticAlgorithm:
                     self.population.append(child1)
                 if child2 not in self.seen_population:
                     self.population.append(child2)
+            
+            logger.info("| Population |")
+            logger.info("--------------------------------------------------------")
+            for scenario in self.population:
+                logger.info("%s, ", scenario)
+            logger.info("--------------------------------------------------------\n")
 
     def create_population(self):
         """Generate random population for algorithm"""
