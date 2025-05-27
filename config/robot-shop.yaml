@@ -17,7 +17,7 @@ scenario:
       - service=rabbitmq
       - service=user
       - service=shipping
-    
+
   application-outages:
     namespace:
       - robot-shop
@@ -38,3 +38,15 @@ scenario:
     container_name:
     - dns
     - kube-rbac-proxy
+
+  node-cpu-hog:
+    taints:
+      - '[]'
+    node_selector:
+      - ""
+
+  node-memory-hog:
+    taints:
+      - '[]'
+    node_selector:
+      - ""

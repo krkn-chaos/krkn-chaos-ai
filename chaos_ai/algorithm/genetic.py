@@ -61,11 +61,9 @@ class GeneticAlgorithm:
                 child1 = self.mutate(child1)
                 child2 = self.mutate(child2)
 
-                if child1 not in self.seen_population:
-                    self.population.append(child1)
-                if child2 not in self.seen_population:
-                    self.population.append(child2)
-            
+                self.population.append(child1)
+                self.population.append(child2)
+
             logger.info("| Population |")
             logger.info("--------------------------------------------------------")
             for scenario in self.population:
@@ -95,6 +93,11 @@ class GeneticAlgorithm:
             logger.info("--------------------------------------------------------\n")
 
     def calculate_fitness(self, scenario: Scenario):
+        # If scenario has already been run, do not run it again.
+        # we will rely on mutation for the same parents to produce newer samples
+        if scenario in self.seen_population:
+            logger.info("Scenario %s already evaluated, skipping fitness calculation.", scenario)
+            return self.seen_population[scenario]
         return self.krkn_client.run(scenario)
 
     def mutate(self, scenario: Scenario):
