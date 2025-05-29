@@ -13,6 +13,11 @@ from chaos_ai.chaos_engines.krkn_hub_runner import KrknHubRunner
 logger = get_module_logger(__name__)
 
 DEBUG_MODE = True
+MUTATION_RATE = 0.6
+CROSSOVER_RATE = 0.8
+
+POPULATION_INJECTION_RATE = 0.35
+POPULATION_INJECTION_SIZE = 2
 
 
 class GeneticAlgorithm:
@@ -25,7 +30,7 @@ class GeneticAlgorithm:
         self.best_of_generation = []
 
     def simulate(self):
-        self.create_population()
+        self.create_population(self.config.population_size)
 
         for i in range(self.config.generations):
             if len(self.population) == 0:
@@ -70,20 +75,25 @@ class GeneticAlgorithm:
                 self.population.append(child1)
                 self.population.append(child2)
 
-    def create_population(self):
+            # Inject random members to population to diversify scenarios
+            if random.random() < POPULATION_INJECTION_RATE:
+                self.create_population(POPULATION_INJECTION_SIZE)
+
+    def create_population(self, population_size):
         """Generate random population for algorithm"""
         logger.info("Creating random population")
         logger.info("Population Size: %d", self.config.population_size)
 
         already_seen = set()
-
-        while len(self.population) != self.config.population_size:
+        count = 0
+        while count != population_size:
             scenario = ScenarioFactory.generate_random_scenario(self.config)
             # Mutate to generate initial randomness among same tests
             scenario = self.mutate(scenario)
             if scenario and scenario not in already_seen:
                 self.population.append(scenario)
                 already_seen.add(scenario)
+                count += 1
 
     def calculate_fitness(self, scenario: Scenario, generation_id: int):
         # If scenario has already been run, do not run it again.
@@ -97,7 +107,7 @@ class GeneticAlgorithm:
 
     def mutate(self, scenario: Scenario):
         for param in scenario.parameters:
-            if random.random() < 0.6:
+            if random.random() < MUTATION_RATE:
                 param.mutate()
         return scenario
 
@@ -138,7 +148,7 @@ class GeneticAlgorithm:
         else:
             # if there are common params, lets switch values between them
             for param in common_params:
-                if random.random() < 0.8:
+                if random.random() < CROSSOVER_RATE:
                     # find index of param in list
                     a_index = find_param_index(scenario_a, param)
                     b_index = find_param_index(scenario_b, param)
