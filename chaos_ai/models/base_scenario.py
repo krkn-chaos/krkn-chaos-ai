@@ -81,9 +81,9 @@ class ScenarioFactory:
 
     @staticmethod
     def create_pod_scenario(
-        namespace: List[str] = ["openshift-.*"],
-        pod_label: List[str] = [""],
-        name_pattern: List[str] = [".*"],
+        namespace: List[str],
+        pod_label: List[str],
+        name_pattern: List[str],
     ):
         return Scenario(
             name="pod-scenarios",

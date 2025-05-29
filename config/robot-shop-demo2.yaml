@@ -1,12 +1,11 @@
 kubeconfig_file_path: "./tmp/kubeconfig.yaml"
 
-generations: 5
+generations: 20
 population_size: 4
 
 fitness_function: 
-  query: 'sum(kube_pod_container_status_restarts_total{namespace="robot-shop"})'
-  type: point
-
+  query: 'max_over_time(container_cpu_usage_seconds_total{namespace="robot-shop", container="mysql"}[$range$])'
+  type: range
 
 scenario:
   pod-scenarios:
@@ -17,9 +16,6 @@ scenario:
       - service=redis
       - service=cart
       - service=mongodb
-      - service=rabbitmq
-      - service=user
-      - service=shipping
 
   application-outages:
     namespace:
@@ -29,18 +25,6 @@ scenario:
       - "{service: redis}"
       - "{service: cart}"
       - "{service: mongodb}"
-      - "{service: user}"
-      - "{service: shipping}"
-      - "{service: rabbitmq}"
-
-  container-scenarios:
-    namespace:
-    - openshift-dns
-    label_selector:
-    - dns.operator.openshift.io/daemonset-dns=default
-    container_name:
-    - dns
-    - kube-rbac-proxy
 
   node-cpu-hog:
     taints:

@@ -3,7 +3,7 @@ import datetime
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
 from chaos_ai.models.app import CommandRunResult
-from chaos_ai.models.config import ConfigFile
+from chaos_ai.models.config import ConfigFile, FitnessFunctionType
 from chaos_ai.models.base_scenario import Scenario
 from chaos_ai.utils.fs import run_shell
 from chaos_ai.utils.logger import get_module_logger
@@ -19,7 +19,7 @@ class KrknHubRunner:
         self.config = config
         self.prom_client = self.__connect_prom_client()
 
-    def run(self, scenario: Scenario) -> CommandRunResult:
+    def run(self, scenario: Scenario, generation_id: int) -> CommandRunResult:
         logger.debug("Running scenario %s", scenario)
 
         # Generate env items
@@ -42,6 +42,7 @@ class KrknHubRunner:
         end_time = datetime.datetime.now()
 
         return CommandRunResult(
+            generation_id=generation_id,
             scenario=scenario,
             cmd=command,
             log=log,
@@ -69,23 +70,60 @@ class KrknHubRunner:
         return KrknPrometheus(f"https://{url}", token.strip())
 
     def calculate_fitness(self, start, end):
+        '''Calculate fitness score for scenario run'''
         # return random.randint(0, 10)
         try:
-            result_at_beginning = self.prom_client.process_prom_query_in_range(
-                self.config.fitness_function,
+            if self.config.fitness_function == FitnessFunctionType.point:
+                return self.calculate_point_fitness(start, end)
+            elif self.config.fitness_function == FitnessFunctionType.range:
+                return self.calculate_range_fitness(start, end)
+        except Exception as error:
+            logger.error("Fitness function calculation failed: %s", error)
+            raise error
+
+    def calculate_point_fitness(self, start, end):
+        '''Takes difference between fitness function at start/end intervals of test.
+           Helpful to measure values for counter based metric like restarts. 
+        '''
+        result_at_beginning = self.prom_client.process_prom_query_in_range(
+                self.config.fitness_function.query,
                 start_time=start,
                 end_time=start,
                 granularity=100,
             )[0]["values"][-1][1]
 
-            result_at_end = self.prom_client.process_prom_query_in_range(
-                self.config.fitness_function,
-                start_time=end,
-                end_time=end,
-                granularity=100,
-            )[0]["values"][-1][1]
+        result_at_end = self.prom_client.process_prom_query_in_range(
+            self.config.fitness_function.query,
+            start_time=end,
+            end_time=end,
+            granularity=100,
+        )[0]["values"][-1][1]
 
-            return float(result_at_end) - float(result_at_beginning)
-        except Exception as error:
-            logger.error("Fitness function calculation failed: %s", error)
-            raise error
+        return float(result_at_end) - float(result_at_beginning)
+
+    def calculate_range_fitness(self, start, end):
+        '''
+        Measure fitness function for the range of test.
+        Helpful to measure value over period of time like max cpu usage, max memory usage over time, etc.
+
+        config.fitness_function.query can specify a dynamic "$range$" parameter that will be replaced
+        when calling below function. 
+        '''
+        query = self.config.fitness_function.query
+        # Calculate number of minutes between test run
+        
+        if '$range$' in query:
+            time_dt_mins = int((end - start).total_seconds() / 60)
+            if time_dt_mins == 0:
+                time_dt_mins = 1
+            query = query.replace('$range$', f'{time_dt_mins}m')
+        else:
+            logger.warning("You are missing $range$ in config.fitness_function.query to specify dynamic range. Fitness function will use specified range")
+        result = self.prom_client.process_prom_query_in_range(
+            self.config.fitness_function.query,
+            start_time=start,
+            end_time=start,
+            granularity=100,
+        )[0]["values"][-1][1]
+
+        return float(result)

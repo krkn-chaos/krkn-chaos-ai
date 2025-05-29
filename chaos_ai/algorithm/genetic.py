@@ -32,12 +32,18 @@ class GeneticAlgorithm:
                 logger.warning("No more population found, stopping generations.")
                 break
 
+            logger.info("| Population |")
+            logger.info("--------------------------------------------------------")
+            for scenario in self.population:
+                logger.info("%s, ", scenario)
+            logger.info("--------------------------------------------------------")
+
             logger.info("| Generation %d |", i + 1)
             logger.info("--------------------------------------------------------")
 
             # Evaluate fitness of the current population
             fitness_scores = [
-                self.calculate_fitness(member) for member in self.population
+                self.calculate_fitness(member, i) for member in self.population
             ]
             # Find the best individual in the current generation
             # Note: If there is no best solution, it will still consider based on sorting order
@@ -64,12 +70,6 @@ class GeneticAlgorithm:
                 self.population.append(child1)
                 self.population.append(child2)
 
-            logger.info("| Population |")
-            logger.info("--------------------------------------------------------")
-            for scenario in self.population:
-                logger.info("%s, ", scenario)
-            logger.info("--------------------------------------------------------\n")
-
     def create_population(self):
         """Generate random population for algorithm"""
         logger.info("Creating random population")
@@ -85,20 +85,15 @@ class GeneticAlgorithm:
                 self.population.append(scenario)
                 already_seen.add(scenario)
 
-        if DEBUG_MODE:
-            logger.info("| Population |")
-            logger.info("--------------------------------------------------------")
-            for scenario in self.population:
-                logger.info("%s, ", scenario)
-            logger.info("--------------------------------------------------------\n")
-
-    def calculate_fitness(self, scenario: Scenario):
+    def calculate_fitness(self, scenario: Scenario, generation_id: int):
         # If scenario has already been run, do not run it again.
         # we will rely on mutation for the same parents to produce newer samples
         if scenario in self.seen_population:
             logger.info("Scenario %s already evaluated, skipping fitness calculation.", scenario)
-            return self.seen_population[scenario]
-        return self.krkn_client.run(scenario)
+            scenario = copy.deepcopy(self.seen_population[scenario])
+            scenario.generation_id = generation_id
+            return scenario
+        return self.krkn_client.run(scenario, generation_id)
 
     def mutate(self, scenario: Scenario):
         for param in scenario.parameters:
@@ -159,14 +154,37 @@ class GeneticAlgorithm:
 
     def save(self, output_dir: str):
         logger.info("Generating population.json")
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
         with open(
             os.path.join(output_dir, "all_population.json"),
             "w",
             encoding="utf-8"
         ) as f:
-            data = list(self.seen_population.values())
-            data = [x.model_dump() for x in data]
-            for i in range(len(data)):
-                data[i]['start_time'] = (data[i]['start_time']).isoformat()
-                data[i]['end_time'] = (data[i]['end_time']).isoformat()
+            data = []
+            for job_id, fitness_result in self.seen_population.items():
+                scenario_result = fitness_result.model_dump()
+                scenario_result['job_id'] = job_id
+
+                # Store log in a log file and update log location
+                scenario_result['log'] = self.save_log_file(
+                    job_id,
+                    scenario_result['log'],
+                    output_dir
+                )
+                # Convert timestamps to ISO string
+                scenario_result['start_time'] = (scenario_result['start_time']).isoformat()
+                scenario_result['end_time'] = (scenario_result['end_time']).isoformat()
+                data.append(scenario_result)
+
             json.dump(data, f, indent=4)
+
+    def save_log_file(self, job_id: str, log_data: str, output_dir: str):
+        dir_path = os.path.join(output_dir, 'logs')
+        if not os.path.exists(dir_path):
+            os.mkdir(dir_path)
+        # Store log file in output directory under a "logs" folder.
+        log_save_path = os.path.join(dir_path, job_id + ".log")
+        with open(log_save_path, 'w', encoding='utf-8') as f:
+            f.write(log_data)
+        return log_save_path

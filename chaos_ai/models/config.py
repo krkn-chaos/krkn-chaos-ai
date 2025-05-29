@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
@@ -42,12 +43,22 @@ class ScenarioConfig(BaseModel):
     )
 
 
+class FitnessFunctionType(str, Enum):
+    point = 'point'
+    range = 'range'
+
+
+class FitnessFunction(BaseModel):
+    query: str  # PromQL
+    type: FitnessFunctionType = FitnessFunctionType.point
+
+
 class ConfigFile(BaseModel):
     kubeconfig_file_path: str  # Path to kubeconfig
 
     generations: int = 20  # Total number of generations to run.
     population_size: int = 10  # Initial population size
 
-    fitness_function: str  # PromQL fitness function
+    fitness_function: FitnessFunction
 
     scenario: ScenarioConfig = ScenarioConfig()

@@ -11,7 +11,7 @@ class BaseParameter(BaseModel):
 
 class NamespaceParameter(BaseParameter):
     name: str = "NAMESPACE"
-    value: str = "openshift-.*"
+    value: str
     possible_values: List[str] = []
 
     def mutate(self):
@@ -20,7 +20,7 @@ class NamespaceParameter(BaseParameter):
 
 class PodLabelParameter(BaseParameter):
     name: str = "POD_LABEL"
-    value: str = ""  # Example: service=payment
+    value: str  # Example: service=payment
     possible_values: List[str] = []
 
     def mutate(self):
@@ -29,7 +29,7 @@ class PodLabelParameter(BaseParameter):
 
 class NamePatternParameter(BaseParameter):
     name: str = "NAME_PATTERN"
-    value: str = ".*"
+    value: str
     possible_values: List[str] = []
 
     def mutate(self):
