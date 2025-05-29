@@ -153,29 +153,36 @@ class GeneticAlgorithm:
             return scenario_a, scenario_b
 
     def save(self, output_dir: str):
-        logger.info("Generating population.json")
+        logger.info("Saving results to generations.json")
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
         with open(
-            os.path.join(output_dir, "all_population.json"),
+            os.path.join(output_dir, "generations.json"),
             "w",
             encoding="utf-8"
         ) as f:
-            data = []
-            for job_id, fitness_result in self.seen_population.items():
+            # Store data per generation
+            data = {}
+
+            for job_id, fitness_result in enumerate(self.seen_population.values()):
                 scenario_result = fitness_result.model_dump()
+                generation_id = scenario_result['generation_id']
                 scenario_result['job_id'] = job_id
 
                 # Store log in a log file and update log location
                 scenario_result['log'] = self.save_log_file(
-                    job_id,
+                    str(job_id),
                     scenario_result['log'],
                     output_dir
                 )
                 # Convert timestamps to ISO string
                 scenario_result['start_time'] = (scenario_result['start_time']).isoformat()
                 scenario_result['end_time'] = (scenario_result['end_time']).isoformat()
-                data.append(scenario_result)
+
+                if generation_id in data:
+                    data[generation_id].append(scenario_result)
+                else:
+                    data[generation_id] = [scenario_result]
 
             json.dump(data, f, indent=4)
 

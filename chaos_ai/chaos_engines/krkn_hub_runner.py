@@ -73,9 +73,9 @@ class KrknHubRunner:
         '''Calculate fitness score for scenario run'''
         # return random.randint(0, 10)
         try:
-            if self.config.fitness_function == FitnessFunctionType.point:
+            if self.config.fitness_function.type == FitnessFunctionType.point:
                 return self.calculate_point_fitness(start, end)
-            elif self.config.fitness_function == FitnessFunctionType.range:
+            elif self.config.fitness_function.type == FitnessFunctionType.range:
                 return self.calculate_range_fitness(start, end)
         except Exception as error:
             logger.error("Fitness function calculation failed: %s", error)
@@ -85,6 +85,7 @@ class KrknHubRunner:
         '''Takes difference between fitness function at start/end intervals of test.
            Helpful to measure values for counter based metric like restarts. 
         '''
+        logger.info("Calculating Point Fitness")
         result_at_beginning = self.prom_client.process_prom_query_in_range(
                 self.config.fitness_function.query,
                 start_time=start,
@@ -107,11 +108,13 @@ class KrknHubRunner:
         Helpful to measure value over period of time like max cpu usage, max memory usage over time, etc.
 
         config.fitness_function.query can specify a dynamic "$range$" parameter that will be replaced
-        when calling below function. 
+        when calling below function.
         '''
+        logger.info("Calculating Range Fitness")
+
         query = self.config.fitness_function.query
         # Calculate number of minutes between test run
-        
+
         if '$range$' in query:
             time_dt_mins = int((end - start).total_seconds() / 60)
             if time_dt_mins == 0:
@@ -119,10 +122,11 @@ class KrknHubRunner:
             query = query.replace('$range$', f'{time_dt_mins}m')
         else:
             logger.warning("You are missing $range$ in config.fitness_function.query to specify dynamic range. Fitness function will use specified range")
+
         result = self.prom_client.process_prom_query_in_range(
-            self.config.fitness_function.query,
+            query,
             start_time=start,
-            end_time=start,
+            end_time=end,
             granularity=100,
         )[0]["values"][-1][1]
 
