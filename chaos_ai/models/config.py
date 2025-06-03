@@ -51,6 +51,7 @@ class FitnessFunctionType(str, Enum):
 class FitnessFunction(BaseModel):
     query: str  # PromQL
     type: FitnessFunctionType = FitnessFunctionType.point
+    include_krkn_failure: bool = False
 
 
 class ConfigFile(BaseModel):

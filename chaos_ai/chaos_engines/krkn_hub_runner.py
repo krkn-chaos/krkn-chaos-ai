@@ -13,6 +13,8 @@ logger = get_module_logger(__name__)
 
 PODMAN_TEMPLATE = 'podman run --env-host=true -e PUBLISH_KRAKEN_STATUS="False" -e TELEMETRY_PROMETHEUS_BACKUP="False" -e WAIT_DURATION=0 {env_list} --net=host -v {kubeconfig}:/home/krkn/.kube/config:Z containers.krkn-chaos.dev/krkn-chaos/krkn-hub:{name}'
 
+KRKN_HUB_FAILURE_SCORE = 5
+
 
 class KrknHubRunner:
     def __init__(self, config: ConfigFile):
@@ -41,6 +43,13 @@ class KrknHubRunner:
 
         end_time = datetime.datetime.now()
 
+        fitness = self.calculate_fitness(start_time, end_time)
+
+        # Include krkn hub run failure info to the fitness score
+        if self.config.fitness_function.include_krkn_failure:
+            if returncode != 0:
+                fitness += KRKN_HUB_FAILURE_SCORE
+
         return CommandRunResult(
             generation_id=generation_id,
             scenario=scenario,
@@ -49,7 +58,7 @@ class KrknHubRunner:
             returncode=returncode,
             start_time=start_time,
             end_time=end_time,
-            fitness_score=self.calculate_fitness(start_time, end_time),
+            fitness_score=fitness,
         )
 
     def __connect_prom_client(self):

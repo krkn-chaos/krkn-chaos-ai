@@ -29,6 +29,9 @@ class GeneticAlgorithm:
         self.seen_population = {}  # Map between scenario and its result
         self.best_of_generation = []
 
+        logger.info("CONFIG:")
+        logger.info("%s", json.dumps(self.config.model_dump(), indent=2))
+
     def simulate(self):
         self.create_population(self.config.population_size)
 

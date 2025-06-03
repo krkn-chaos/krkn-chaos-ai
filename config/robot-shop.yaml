@@ -6,6 +6,7 @@ population_size: 4
 fitness_function: 
   query: 'sum(kube_pod_container_status_restarts_total{namespace="robot-shop"})'
   type: point
+  include_krkn_failure: true
 
 
 scenario:
