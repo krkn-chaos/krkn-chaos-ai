@@ -21,6 +21,11 @@ export IS_OPENSHIFT=true
 ## Running the Chaos AI CLI
 
 ```
+# Set Prometheus reader parameters
+export PROMETHEUS_URL=''
+export PROMETHEUS_TOKEN=''
+
+# Start chaos ai test
 $ uv run chaos_ai run  --help
 Usage: chaos_ai run [OPTIONS]
 

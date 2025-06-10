@@ -4,11 +4,11 @@ import json
 import random
 from typing import List
 
-from chaos_ai.models.app import CommandRunResult
+from chaos_ai.models.app import CommandRunResult, KrknRunnerType
 from chaos_ai.models.base_scenario import Scenario, ScenarioFactory
 from chaos_ai.models.config import ConfigFile
 from chaos_ai.utils.logger import get_module_logger
-from chaos_ai.chaos_engines.krkn_hub_runner import KrknHubRunner
+from chaos_ai.chaos_engines.krkn_hub_runner import KrknRunner
 
 logger = get_module_logger(__name__)
 
@@ -21,8 +21,11 @@ POPULATION_INJECTION_SIZE = 2
 
 
 class GeneticAlgorithm:
+    '''
+    A class implementing a Genetic Algorithm for scenario optimization.
+    '''
     def __init__(self, config: ConfigFile):
-        self.krkn_client = KrknHubRunner(config)
+        self.krkn_client = KrknRunner(config, runner_type=KrknRunnerType.CLI_RUNNER)
         self.config = config
         self.population = []
 

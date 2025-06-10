@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 import datetime
+from enum import Enum
 
 from chaos_ai.models.base_scenario import Scenario
 
@@ -14,3 +15,7 @@ class CommandRunResult(BaseModel):
     end_time: datetime.datetime     # End date timestamp of the test
     fitness_score: float            # Overall fitness score measured for scenario.
 
+
+class KrknRunnerType(str, Enum):
+    HUB_RUNNER = "HUB_RUNNER"
+    CLI_RUNNER = "CLI_RUNNER"

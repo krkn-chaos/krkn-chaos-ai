@@ -178,3 +178,4 @@ notebooks/
 tmp/
 
 kubeconfig.yaml
+krknctl-kubeconfig*
