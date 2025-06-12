@@ -43,7 +43,8 @@ class KrknRunner:
 
         # Include krkn hub run failure info to the fitness score
         if self.config.fitness_function.include_krkn_failure:
-            if returncode != 0:
+            # Status code 2 means that SLOs not met per Krkn test
+            if returncode == 2:
                 fitness += KRKN_HUB_FAILURE_SCORE
 
         return CommandRunResult(

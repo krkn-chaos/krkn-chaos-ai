@@ -8,7 +8,7 @@ from chaos_ai.models.app import CommandRunResult, KrknRunnerType
 from chaos_ai.models.base_scenario import Scenario, ScenarioFactory
 from chaos_ai.models.config import ConfigFile
 from chaos_ai.utils.logger import get_module_logger
-from chaos_ai.chaos_engines.krkn_hub_runner import KrknRunner
+from chaos_ai.chaos_engines.krkn_runner import KrknRunner
 
 logger = get_module_logger(__name__)
 
