@@ -5,7 +5,13 @@ import random
 from typing import List
 
 from chaos_ai.models.app import CommandRunResult, KrknRunnerType
-from chaos_ai.models.base_scenario import Scenario, ScenarioFactory
+from chaos_ai.models.base_scenario import (
+    BaseScenario,
+    Scenario,
+    CompositeDependency,
+    CompositeScenario,
+    ScenarioFactory
+)
 from chaos_ai.models.config import ConfigFile
 from chaos_ai.utils.logger import get_module_logger
 from chaos_ai.chaos_engines.krkn_runner import KrknRunner
@@ -15,6 +21,7 @@ logger = get_module_logger(__name__)
 DEBUG_MODE = True
 MUTATION_RATE = 0.6
 CROSSOVER_RATE = 0.8
+CROSSOVER_COMPOSITION_RATE = 0.3
 
 POPULATION_INJECTION_RATE = 0.35
 POPULATION_INJECTION_SIZE = 2
@@ -72,14 +79,30 @@ class GeneticAlgorithm:
             self.population = []
             for _ in range(self.config.population_size // 2):
                 parent1, parent2 = self.select_parents(fitness_scores)
-                child1, child2 = self.crossover(
-                    copy.deepcopy(parent1), copy.deepcopy(parent2)
-                )
-                child1 = self.mutate(child1)
-                child2 = self.mutate(child2)
+                child1, child2 = None, None
+                if random.random() < CROSSOVER_COMPOSITION_RATE:
+                    # componention crossover to generate 1 scenario
+                    child1 = self.composition(
+                        copy.deepcopy(parent1), copy.deepcopy(parent2)
+                    )
+                    child1 = self.mutate(child1)
+                    self.population.append(child1)
 
-                self.population.append(child1)
-                self.population.append(child2)
+                    child2 = self.composition(
+                        copy.deepcopy(parent2), copy.deepcopy(parent1)
+                    )
+                    child2 = self.mutate(child2)
+                    self.population.append(child2)
+                else:
+                    # Crossover of 2 parents to generate 2 offsprings
+                    child1, child2 = self.crossover(
+                        copy.deepcopy(parent1), copy.deepcopy(parent2)
+                    )
+                    child1 = self.mutate(child1)
+                    child2 = self.mutate(child2)
+
+                    self.population.append(child1)
+                    self.population.append(child2)
 
             # Inject random members to population to diversify scenarios
             if random.random() < POPULATION_INJECTION_RATE:
@@ -101,7 +124,7 @@ class GeneticAlgorithm:
                 already_seen.add(scenario)
                 count += 1
 
-    def calculate_fitness(self, scenario: Scenario, generation_id: int):
+    def calculate_fitness(self, scenario: BaseScenario, generation_id: int):
         # If scenario has already been run, do not run it again.
         # we will rely on mutation for the same parents to produce newer samples
         if scenario in self.seen_population:
@@ -111,7 +134,10 @@ class GeneticAlgorithm:
             return scenario
         return self.krkn_client.run(scenario, generation_id)
 
-    def mutate(self, scenario: Scenario):
+    def mutate(self, scenario: BaseScenario):
+        if isinstance(scenario, CompositeScenario):
+            # TODO: Mutate for composite scenario
+            return scenario
         for param in scenario.parameters:
             if random.random() < MUTATION_RATE:
                 param.mutate()
@@ -137,7 +163,14 @@ class GeneticAlgorithm:
         parent2 = random.choices(scenarios, weights=probabilities, k=1)[0]
         return parent1, parent2
 
-    def crossover(self, scenario_a: Scenario, scenario_b: Scenario):
+    def crossover(self, scenario_a: BaseScenario, scenario_b: BaseScenario):
+        if isinstance(scenario_a, CompositeScenario) and isinstance(scenario_a, CompositeScenario):
+            # TODO: Handle both scenario are composite
+            return scenario_a, scenario_b
+        elif isinstance(scenario_a, CompositeScenario) or isinstance(scenario_a, CompositeScenario):
+            # TODO: One of them is composite
+            return scenario_a, scenario_b
+        
         common_params = set([x.name for x in scenario_a.parameters]) & set(
             [x.name for x in scenario_b.parameters]
         )
@@ -167,6 +200,21 @@ class GeneticAlgorithm:
                     scenario_b.parameters[b_index].value = valueA
 
             return scenario_a, scenario_b
+
+    def composition(self, scenario_a: BaseScenario, scenario_b: BaseScenario):
+        # combines two scenario to create a single composite scenario
+        dependency = random.choice([
+            CompositeDependency.NONE,
+            CompositeDependency.A_ON_B,
+            CompositeDependency.B_ON_A
+        ])
+        composite_scenario = CompositeScenario(
+            name="composite",
+            scenario_a=scenario_a,
+            scenario_b=scenario_b,
+            dependency=dependency
+        )
+        return composite_scenario
 
     def save(self, output_dir: str):
         logger.info("Saving results to generations.json")

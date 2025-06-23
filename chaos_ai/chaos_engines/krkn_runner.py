@@ -1,11 +1,17 @@
 import os
 import json
 import datetime
+import tempfile
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
 from chaos_ai.models.app import CommandRunResult, KrknRunnerType
 from chaos_ai.models.config import ConfigFile, FitnessFunctionType
-from chaos_ai.models.base_scenario import Scenario
+from chaos_ai.models.base_scenario import (
+    Scenario,
+    BaseScenario,
+    CompositeScenario,
+    CompositeDependency
+)
 from chaos_ai.utils.fs import run_shell
 from chaos_ai.utils.logger import get_module_logger
 
@@ -17,6 +23,8 @@ PODMAN_TEMPLATE = 'podman run --env-host=true -e PUBLISH_KRAKEN_STATUS="False" -
 
 KRKNCTL_TEMPLATE = 'krknctl run {name} --telemetry-prometheus-backup False --wait-duration 0 --kubeconfig {kubeconfig} {env_list}'
 
+KRKNCTL_GRAPH_RUN_TEMPLATE = 'krknctl graph run {path} --kubeconfig {kubeconfig}'
+
 KRKN_HUB_FAILURE_SCORE = 5
 
 
@@ -26,16 +34,22 @@ class KrknRunner:
         self.prom_client = self.__connect_prom_client()
         self.runner_type = runner_type
 
-    def run(self, scenario: Scenario, generation_id: int) -> CommandRunResult:
+    def run(self, scenario: BaseScenario, generation_id: int) -> CommandRunResult:
         logger.debug("Running scenario %s", scenario)
-
-        command = self.runner_command(scenario)
 
         start_time = datetime.datetime.now()
 
-        log, returncode = run_shell(command)
-        # log = ""
-        # returncode = 0
+        log, returncode = None, None
+
+        if isinstance(scenario, CompositeScenario):
+            log, returncode = self.graph_run(scenario)
+        elif isinstance(scenario, Scenario):
+            command = self.runner_command(scenario)
+            log, returncode = run_shell(command)
+            #log = ""
+            #returncode = 0
+        else:
+            raise NotImplementedError("Scenario unable to run")
 
         end_time = datetime.datetime.now()
 
@@ -88,6 +102,66 @@ class KrknRunner:
             )
             return command
         raise Exception("Unsupported runner type")
+
+    def graph_run(self, scenario: CompositeScenario):
+        # Create JSON for krknctl graph runner
+        scenario_json = self.__expand_composite_json(scenario)
+        json_file = tempfile.mktemp(suffix=".json")
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(scenario_json, f, ensure_ascii=False, indent=4)
+        logger.info("Created scenario json in path: %s", json_file)
+
+        # Run Json graph
+        command = KRKNCTL_GRAPH_RUN_TEMPLATE.format(
+            path=json_file,
+            kubeconfig=self.config.kubeconfig_file_path
+        )
+        return run_shell(command)
+
+    def __expand_composite_json(self, scenario: CompositeScenario, root=0):
+        result = {}
+        scenario_a = scenario.scenario_a
+        scenario_b = scenario.scenario_b
+
+        key_a = str(root)
+        key_b = str(root + 1)
+
+        if isinstance(scenario_a, CompositeScenario):
+            result.update(
+                self.__expand_composite_json(scenario_a, root+2)
+            )
+        elif isinstance(scenario_a, Scenario):
+            result[key_a] = self.__generate_scenario_json(
+                scenario_a,
+                depends_on=key_b if scenario.dependency == CompositeDependency.A_ON_B else None
+            )
+
+        if isinstance(scenario_b, CompositeScenario):
+            result.update(
+                self.__expand_composite_json(scenario_b, root+3)
+            )
+        elif isinstance(scenario_b, Scenario):
+            result[key_b] = self.__generate_scenario_json(
+                scenario_b,
+                depends_on=key_a if scenario.dependency == CompositeDependency.B_ON_A else None
+            )
+
+        return result
+
+    def __generate_scenario_json(self, scenario: Scenario, depends_on: str = None):
+        # generate a json based on https://krkn-chaos.dev/docs/krknctl/randomized-chaos-testing/#example
+        env = {
+            param.name: str(param.value)
+            for param in scenario.parameters
+        }
+        result = {
+            "image": f"containers.krkn-chaos.dev/krkn-chaos/krkn-hub:{scenario.name}",
+            "name": scenario.name,
+            "env": env
+        }
+        if depends_on is not None:
+            result['depends_on'] = depends_on
+        return result
 
     def __connect_prom_client(self):
         # Fetch Prometheus query endpoint
