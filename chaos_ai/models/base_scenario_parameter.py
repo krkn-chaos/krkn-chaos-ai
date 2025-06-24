@@ -9,6 +9,14 @@ class BaseParameter(BaseModel):
     value: Any
 
 
+class DummyParameter(BaseParameter):
+    name: str
+    value: int
+
+    def mutate(self):
+        pass
+
+
 class NamespaceParameter(BaseParameter):
     name: str = "NAMESPACE"
     value: str

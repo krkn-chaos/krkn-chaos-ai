@@ -31,8 +31,13 @@ class GeneticAlgorithm:
     '''
     A class implementing a Genetic Algorithm for scenario optimization.
     '''
-    def __init__(self, config: ConfigFile):
-        self.krkn_client = KrknRunner(config, runner_type=KrknRunnerType.CLI_RUNNER)
+    def __init__(self, config: ConfigFile, output_dir: str):
+        self.krkn_client = KrknRunner(
+            config,
+            output_dir=output_dir,
+            runner_type=KrknRunnerType.CLI_RUNNER
+        )
+        self.output_dir = output_dir
         self.config = config
         self.population = []
 
@@ -164,13 +169,13 @@ class GeneticAlgorithm:
         return parent1, parent2
 
     def crossover(self, scenario_a: BaseScenario, scenario_b: BaseScenario):
-        if isinstance(scenario_a, CompositeScenario) and isinstance(scenario_a, CompositeScenario):
+        if isinstance(scenario_a, CompositeScenario) and isinstance(scenario_b, CompositeScenario):
             # TODO: Handle both scenario are composite
             return scenario_a, scenario_b
-        elif isinstance(scenario_a, CompositeScenario) or isinstance(scenario_a, CompositeScenario):
+        elif isinstance(scenario_a, CompositeScenario) or isinstance(scenario_b, CompositeScenario):
             # TODO: One of them is composite
             return scenario_a, scenario_b
-        
+
         common_params = set([x.name for x in scenario_a.parameters]) & set(
             [x.name for x in scenario_b.parameters]
         )
@@ -216,10 +221,10 @@ class GeneticAlgorithm:
         )
         return composite_scenario
 
-    def save(self, output_dir: str):
+    def save(self):
         logger.info("Saving results to generations.json")
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
+        output_dir = self.output_dir
+        os.makedirs(output_dir, exist_ok=True)
         with open(
             os.path.join(output_dir, "generations.json"),
             "w",

@@ -2,12 +2,12 @@ from pydantic import BaseModel
 import datetime
 from enum import Enum
 
-from chaos_ai.models.base_scenario import Scenario
+from chaos_ai.models.base_scenario import BaseScenario
 
 
 class CommandRunResult(BaseModel):
     generation_id: int      # Which generation was scenario referred
-    scenario: Scenario      # scenario details
+    scenario: BaseScenario  # scenario details
     cmd: str                # Krkn-Hub command 
     log: str                # Log details or path to log file
     returncode: int         # Return code of Krkn-Hub scenario execution

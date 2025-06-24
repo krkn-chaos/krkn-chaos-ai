@@ -50,7 +50,7 @@ class CompositeScenario(BaseScenario):
         return self.name == other.name and hash(other) == hash(self)
 
     def __hash__(self):
-        return hash(tuple(self.scenarios))
+        return hash(tuple([self.scenario_a, self.scenario_b]))
 
 
 class ScenarioFactory:
@@ -209,4 +209,14 @@ class ScenarioFactory:
                 param.NumberOfNodesParameter(),
                 param.HogScenarioImageParameter(),
             ],
+        )
+
+    @staticmethod
+    def create_dummy_scenario():
+        return Scenario(
+            name="dummy-scenario",
+            parameters=[
+                param.DummyParameter(name="END", value=10),
+                param.DummyParameter(name="EXIT_STATUS", value=0),
+            ]
         )

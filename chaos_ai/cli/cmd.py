@@ -29,7 +29,10 @@ def run(config: str, output: str = "./"):
     parsed_config = read_config_from_file(config)
     logger.debug("Successfully parsed config!")
 
-    genetic = GeneticAlgorithm(parsed_config)
+    genetic = GeneticAlgorithm(
+        parsed_config,
+        output_dir=output
+    )
     genetic.simulate()
 
-    genetic.save(output)
+    genetic.save()
