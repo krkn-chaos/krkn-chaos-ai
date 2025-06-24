@@ -85,7 +85,7 @@ class GeneticAlgorithm:
             for _ in range(self.config.population_size // 2):
                 parent1, parent2 = self.select_parents(fitness_scores)
                 child1, child2 = None, None
-                if True or random.random() < CROSSOVER_COMPOSITION_RATE:
+                if random.random() < CROSSOVER_COMPOSITION_RATE:
                     # componention crossover to generate 1 scenario
                     child1 = self.composition(
                         copy.deepcopy(parent1), copy.deepcopy(parent2)

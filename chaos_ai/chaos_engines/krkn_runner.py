@@ -46,6 +46,7 @@ class KrknRunner:
 
         start_time = datetime.datetime.now()
 
+        # Generate command krkn executor command
         log, returncode = None, None
         command = ""
         if isinstance(scenario, CompositeScenario):
@@ -55,11 +56,13 @@ class KrknRunner:
         else:
             raise NotImplementedError("Scenario unable to run")
 
-        # Run the actual test
-        if isinstance(scenario, CompositeScenario):
-            log, returncode = run_shell(command)
-        else:
-            log, returncode = "", 0
+        # Run command and fetch result
+        # TODO: How to capture logs from composite run scenario 
+        log, returncode = run_shell(command)
+        # if isinstance(scenario, CompositeScenario):
+        #     log, returncode = run_shell(command)
+        # else:
+        #     log, returncode = "", 0
 
         end_time = datetime.datetime.now()
 
