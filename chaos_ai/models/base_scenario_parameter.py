@@ -8,6 +8,9 @@ class BaseParameter(BaseModel):
     name: str
     value: Any
 
+    def get_value(self):
+        return self.value
+
 
 class DummyParameter(BaseParameter):
     name: str
@@ -166,6 +169,9 @@ class NodeCPUPercentageParameter(BaseParameter):
 class NodeMemopryPercentageParameter(BaseParameter):
     name: str = "MEMORY_CONSUMPTION_PERCENTAGE"
     value: int = 90
+
+    def get_value(self):
+        return f"{self.value}%"
 
     def mutate(self):
         if random.random() < 0.5:

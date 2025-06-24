@@ -56,8 +56,10 @@ class KrknRunner:
             raise NotImplementedError("Scenario unable to run")
 
         # Run the actual test
-        # log, returncode = run_shell(command)
-        log, returncode = "", 0
+        if isinstance(scenario, CompositeScenario):
+            log, returncode = run_shell(command)
+        else:
+            log, returncode = "", 0
 
         end_time = datetime.datetime.now()
 
@@ -86,7 +88,7 @@ class KrknRunner:
             # Generate env items
             env_list = ""
             for parameter in scenario.parameters:
-                env_list += f' -e {parameter.name}="{parameter.value}" '
+                env_list += f' -e {parameter.name}="{parameter.get_value()}" '
 
             command = PODMAN_TEMPLATE.format(
                 env_list=env_list,
@@ -101,7 +103,7 @@ class KrknRunner:
             env_list = ""
             for parameter in scenario.parameters:
                 param_name = (parameter.name).lower().replace("_", "-")
-                env_list += f'--{param_name} "{parameter.value}" '
+                env_list += f'--{param_name} "{parameter.get_value()}" '
 
             command = KRKNCTL_TEMPLATE.format(
                 env_list=env_list,
@@ -170,7 +172,7 @@ class KrknRunner:
 
     def __generate_scenario_json(self, scenario: Scenario, depends_on: str = None):
         # generate a json based on https://krkn-chaos.dev/docs/krknctl/randomized-chaos-testing/#example
-        env = {param.name: str(param.value) for param in scenario.parameters}
+        env = {param.name: str(param.get_value()) for param in scenario.parameters}
         result = {
             "image": f"containers.krkn-chaos.dev/krkn-chaos/krkn-hub:{scenario.name}",
             "name": scenario.name,
