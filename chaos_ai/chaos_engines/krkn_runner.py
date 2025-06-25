@@ -57,8 +57,9 @@ class KrknRunner:
             raise NotImplementedError("Scenario unable to run")
 
         # Run command and fetch result
-        # TODO: How to capture logs from composite run scenario 
+        # TODO: How to capture logs from composite run scenario
         log, returncode = run_shell(command)
+        # log, returncode = "", 0
         # if isinstance(scenario, CompositeScenario):
         #     log, returncode = run_shell(command)
         # else:
@@ -134,23 +135,32 @@ class KrknRunner:
         )
         return command
 
-    def __expand_composite_json(self, scenario: CompositeScenario, root=0):
+    def __expand_composite_json(
+        self,
+        scenario: CompositeScenario,
+        root: int = 0,
+        depends_on: int = None
+    ):
         result = {}
         scenario_a = scenario.scenario_a
         scenario_b = scenario.scenario_b
 
-        key_root = str(root)
-        key_a = str(root + 1)
-        key_b = str(root + 2)
+        key_root = root
+        key_a = root + 1
+        key_b = root + 2
 
         # Create a dummy scenario which will be the root for scenario A and B.
         if scenario.dependency == CompositeDependency.NONE:
             result[key_root] = self.__generate_scenario_json(
-                ScenarioFactory.create_dummy_scenario()
+                ScenarioFactory.create_dummy_scenario(),
+                depends_on=depends_on
             )
 
         if isinstance(scenario_a, CompositeScenario):
-            result.update(self.__expand_composite_json(scenario_a, root + 3))
+            key = key_b if scenario.dependency == CompositeDependency.A_ON_B else None
+            if scenario.dependency == CompositeDependency.NONE:
+                key = key_root
+            result.update(self.__expand_composite_json(scenario_a, root + 3, depends_on=key))
         elif isinstance(scenario_a, Scenario):
             key = key_b if scenario.dependency == CompositeDependency.A_ON_B else None
             if scenario.dependency == CompositeDependency.NONE:
@@ -161,7 +171,10 @@ class KrknRunner:
             )
 
         if isinstance(scenario_b, CompositeScenario):
-            result.update(self.__expand_composite_json(scenario_b, root + 4))
+            key = key_a if scenario.dependency == CompositeDependency.B_ON_A else None
+            if scenario.dependency == CompositeDependency.NONE:
+                key = key_root
+            result.update(self.__expand_composite_json(scenario_b, root + 4, depends_on=key))
         elif isinstance(scenario_b, Scenario):
             key = key_a if scenario.dependency == CompositeDependency.B_ON_A else None
             if scenario.dependency == CompositeDependency.NONE:
@@ -173,7 +186,7 @@ class KrknRunner:
 
         return result
 
-    def __generate_scenario_json(self, scenario: Scenario, depends_on: str = None):
+    def __generate_scenario_json(self, scenario: Scenario, depends_on: int = None):
         # generate a json based on https://krkn-chaos.dev/docs/krknctl/randomized-chaos-testing/#example
         env = {param.name: str(param.get_value()) for param in scenario.parameters}
         result = {
@@ -182,7 +195,7 @@ class KrknRunner:
             "env": env,
         }
         if depends_on is not None:
-            result["depends_on"] = depends_on
+            result["depends_on"] = str(depends_on)
         return result
 
     def __connect_prom_client(self):
