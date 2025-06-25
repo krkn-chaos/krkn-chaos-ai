@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import datetime
 import tempfile
 
@@ -138,16 +139,16 @@ class KrknRunner:
     def __expand_composite_json(
         self,
         scenario: CompositeScenario,
-        root: int = 0,
-        depends_on: int = None
+        root: str = "$",
+        depends_on: str = None
     ):
         result = {}
         scenario_a = scenario.scenario_a
         scenario_b = scenario.scenario_b
 
         key_root = root
-        key_a = root + 1
-        key_b = root + 2
+        key_a = root + "l"
+        key_b = root + "r"
 
         # Create a dummy scenario which will be the root for scenario A and B.
         if scenario.dependency == CompositeDependency.NONE:
@@ -156,28 +157,52 @@ class KrknRunner:
                 depends_on=depends_on
             )
 
+        # Generate json for scenario A
         if isinstance(scenario_a, CompositeScenario):
-            key = key_b if scenario.dependency == CompositeDependency.A_ON_B else None
-            if scenario.dependency == CompositeDependency.NONE:
+            # Generate Dependency Key
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = key_b
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.NONE:
                 key = key_root
-            result.update(self.__expand_composite_json(scenario_a, root + 3, depends_on=key))
+
+            # Since we are traversing left of the tree, key_a will contain the unique parent id 
+            result.update(self.__expand_composite_json(scenario_a, key_a, depends_on=key))
         elif isinstance(scenario_a, Scenario):
-            key = key_b if scenario.dependency == CompositeDependency.A_ON_B else None
-            if scenario.dependency == CompositeDependency.NONE:
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = key_b
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.NONE:
                 key = key_root
+
             result[key_a] = self.__generate_scenario_json(
                 scenario_a,
                 depends_on=key,
             )
 
+        # Generate json for scenario B
         if isinstance(scenario_b, CompositeScenario):
-            key = key_a if scenario.dependency == CompositeDependency.B_ON_A else None
-            if scenario.dependency == CompositeDependency.NONE:
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = key_b
+            elif scenario.dependency == CompositeDependency.NONE:
                 key = key_root
-            result.update(self.__expand_composite_json(scenario_b, root + 4, depends_on=key))
+
+            # Since we are traversing right of the tree, key_b will contain the unique parent id
+            result.update(self.__expand_composite_json(scenario_b, key_b, depends_on=key))
         elif isinstance(scenario_b, Scenario):
-            key = key_a if scenario.dependency == CompositeDependency.B_ON_A else None
-            if scenario.dependency == CompositeDependency.NONE:
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = key_a
+            elif scenario.dependency == CompositeDependency.NONE:
                 key = key_root
             result[key_b] = self.__generate_scenario_json(
                 scenario_b,
@@ -186,7 +211,7 @@ class KrknRunner:
 
         return result
 
-    def __generate_scenario_json(self, scenario: Scenario, depends_on: int = None):
+    def __generate_scenario_json(self, scenario: Scenario, depends_on: str = None):
         # generate a json based on https://krkn-chaos.dev/docs/krknctl/randomized-chaos-testing/#example
         env = {param.name: str(param.get_value()) for param in scenario.parameters}
         result = {
@@ -195,7 +220,7 @@ class KrknRunner:
             "env": env,
         }
         if depends_on is not None:
-            result["depends_on"] = str(depends_on)
+            result["depends_on"] = depends_on
         return result
 
     def __connect_prom_client(self):
@@ -221,6 +246,7 @@ class KrknRunner:
         return KrknPrometheus(f"https://{url}", token.strip())
 
     def calculate_fitness(self, start, end):
+        # return random.random()
         """Calculate fitness score for scenario run"""
         # return random.randint(0, 10)
         try:
