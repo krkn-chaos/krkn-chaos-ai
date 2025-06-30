@@ -141,8 +141,11 @@ class GeneticAlgorithm:
 
     def mutate(self, scenario: BaseScenario):
         if isinstance(scenario, CompositeScenario):
-            # TODO: Mutate for composite scenario
+            logger.info("Mutating composite scenario")
+            scenario.scenario_a = self.mutate(scenario.scenario_a)
+            scenario.scenario_b = self.mutate(scenario.scenario_b)
             return scenario
+        logger.info("Mutating scenario")
         for param in scenario.parameters:
             if random.random() < MUTATION_RATE:
                 param.mutate()
@@ -170,11 +173,24 @@ class GeneticAlgorithm:
 
     def crossover(self, scenario_a: BaseScenario, scenario_b: BaseScenario):
         if isinstance(scenario_a, CompositeScenario) and isinstance(scenario_b, CompositeScenario):
-            # TODO: Handle both scenario are composite
+            # Handle both scenario are composite
+            # by swapping one of the branches
+            scenario_a.scenario_b, scenario_b.scenario_b = scenario_b.scenario_b, scenario_a.scenario_b
             return scenario_a, scenario_b
         elif isinstance(scenario_a, CompositeScenario) or isinstance(scenario_b, CompositeScenario):
-            # TODO: One of them is composite
-            return scenario_a, scenario_b
+            # Only one of them is composite
+            if isinstance(scenario_a, CompositeScenario):
+                # Scenario A is composite and B is not
+                # Swap scenario_a's right node with scenario_b
+                a_b = scenario_a.scenario_b
+                scenario_a.scenario_b = scenario_b
+                return scenario_a, a_b
+            else:
+                # Scenario B is composite and A is not
+                # Swap scenario_a's right node with scenario_b
+                b_a = scenario_b.scenario_a
+                scenario_b.scenario_a = scenario_a
+                return b_a, scenario_b
 
         common_params = set([x.name for x in scenario_a.parameters]) & set(
             [x.name for x in scenario_b.parameters]
@@ -222,6 +238,11 @@ class GeneticAlgorithm:
         return composite_scenario
 
     def save(self):
+        '''Save run results'''
+        self.save_generations()
+        self.save_best_generations()
+
+    def save_generations(self):
         logger.info("Saving results to generations.json")
         output_dir = self.output_dir
         os.makedirs(output_dir, exist_ok=True)
@@ -254,6 +275,24 @@ class GeneticAlgorithm:
                     data[generation_id] = [scenario_result]
 
             json.dump(data, f, indent=4)
+
+    def save_best_generations(self):
+        logger.info("Saving results to best-generations.json")
+        output_dir = self.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        with open(
+            os.path.join(output_dir, "best-generations.json"),
+            "w",
+            encoding="utf-8"
+        ) as f:
+            best_generations = self.best_of_generation[:]
+            for i in range(len(best_generations)):
+                scenario_result = best_generations[i].model_dump()
+                del scenario_result['log']
+                scenario_result['start_time'] = (scenario_result['start_time']).isoformat()
+                scenario_result['end_time'] = (scenario_result['end_time']).isoformat()
+                best_generations[i] = scenario_result
+            json.dump(best_generations, f, indent=4)
 
     def save_log_file(self, job_id: str, log_data: str, output_dir: str):
         dir_path = os.path.join(output_dir, 'logs')

@@ -17,6 +17,8 @@ from chaos_ai.models.base_scenario import (
 from chaos_ai.utils.fs import run_shell
 from chaos_ai.utils.logger import get_module_logger
 
+random.seed(1)
+
 logger = get_module_logger(__name__)
 
 # TODO: Cleanup of temp kubeconfig after running the script
