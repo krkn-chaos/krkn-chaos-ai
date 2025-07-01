@@ -1,6 +1,8 @@
+import os
 import yaml
 import shlex
 import subprocess
+
 from chaos_ai.models.config import ConfigFile
 from chaos_ai.utils.logger import get_module_logger
 
@@ -31,3 +33,12 @@ def run_shell(command, do_not_log=False):
     process.wait()
     logger.info("Run Status: %d", process.returncode)
     return logs, process.returncode
+
+
+def env_is_truthy(var: str):
+    '''
+    Checks whether a environment variable is set to truthy value.
+    '''
+    value = os.getenv(var, 'false')
+    value = value.lower().strip()
+    return value in ['yes', 'y', 'true', '1']

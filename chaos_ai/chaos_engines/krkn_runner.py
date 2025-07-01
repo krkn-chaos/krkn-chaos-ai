@@ -14,10 +14,8 @@ from chaos_ai.models.base_scenario import (
     CompositeDependency,
     ScenarioFactory
 )
-from chaos_ai.utils.fs import run_shell
+from chaos_ai.utils.fs import run_shell, env_is_truthy
 from chaos_ai.utils.logger import get_module_logger
-
-random.seed(1)
 
 logger = get_module_logger(__name__)
 
@@ -60,13 +58,12 @@ class KrknRunner:
             raise NotImplementedError("Scenario unable to run")
 
         # Run command and fetch result
-        # TODO: How to capture logs from composite run scenario
-        log, returncode = run_shell(command)
-        # log, returncode = "", 0
-        # if isinstance(scenario, CompositeScenario):
-        #     log, returncode = run_shell(command)
-        # else:
-        #     log, returncode = "", 0
+        if env_is_truthy('MOCK_RUN'):
+            # Used for running mock tests
+            log, returncode = "", 0
+        else:
+            # TODO: How to capture logs from composite run scenario
+            log, returncode = run_shell(command)
 
         end_time = datetime.datetime.now()
 
@@ -248,9 +245,9 @@ class KrknRunner:
         return KrknPrometheus(f"https://{url}", token.strip())
 
     def calculate_fitness(self, start, end):
-        # return random.random()
         """Calculate fitness score for scenario run"""
-        # return random.randint(0, 10)
+        if env_is_truthy("MOCK_FITNESS"):
+            return random.random()
         try:
             if self.config.fitness_function.type == FitnessFunctionType.point:
                 return self.calculate_point_fitness(start, end)

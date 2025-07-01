@@ -18,14 +18,6 @@ from chaos_ai.chaos_engines.krkn_runner import KrknRunner
 
 logger = get_module_logger(__name__)
 
-DEBUG_MODE = True
-MUTATION_RATE = 0.6
-CROSSOVER_RATE = 0.8
-CROSSOVER_COMPOSITION_RATE = 0.3
-
-POPULATION_INJECTION_RATE = 0.35
-POPULATION_INJECTION_SIZE = 2
-
 
 class GeneticAlgorithm:
     '''
@@ -85,7 +77,7 @@ class GeneticAlgorithm:
             for _ in range(self.config.population_size // 2):
                 parent1, parent2 = self.select_parents(fitness_scores)
                 child1, child2 = None, None
-                if random.random() < CROSSOVER_COMPOSITION_RATE:
+                if random.random() < self.config.composition_rate:
                     # componention crossover to generate 1 scenario
                     child1 = self.composition(
                         copy.deepcopy(parent1), copy.deepcopy(parent2)
@@ -110,8 +102,8 @@ class GeneticAlgorithm:
                     self.population.append(child2)
 
             # Inject random members to population to diversify scenarios
-            if random.random() < POPULATION_INJECTION_RATE:
-                self.create_population(POPULATION_INJECTION_SIZE)
+            if random.random() < self.config.population_injection_rate:
+                self.create_population(self.config.population_injection_size)
 
     def create_population(self, population_size):
         """Generate random population for algorithm"""
@@ -141,13 +133,11 @@ class GeneticAlgorithm:
 
     def mutate(self, scenario: BaseScenario):
         if isinstance(scenario, CompositeScenario):
-            logger.info("Mutating composite scenario")
             scenario.scenario_a = self.mutate(scenario.scenario_a)
             scenario.scenario_b = self.mutate(scenario.scenario_b)
             return scenario
-        logger.info("Mutating scenario")
         for param in scenario.parameters:
-            if random.random() < MUTATION_RATE:
+            if random.random() < self.config.mutation_rate:
                 param.mutate()
         return scenario
 
@@ -208,7 +198,7 @@ class GeneticAlgorithm:
         else:
             # if there are common params, lets switch values between them
             for param in common_params:
-                if random.random() < CROSSOVER_RATE:
+                if random.random() < self.config.crossover_rate:
                     # find index of param in list
                     a_index = find_param_index(scenario_a, param)
                     b_index = find_param_index(scenario_b, param)
