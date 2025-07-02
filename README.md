@@ -16,6 +16,7 @@ uv pip install -e .
 export DEMO_NAMESPACE=robot-shop
 export IS_OPENSHIFT=true
 ./scripts/setup-demo-microservice.sh
+oc config set-context --current --namespace=robot-shop
 ```
 
 ## Running the Chaos AI CLI

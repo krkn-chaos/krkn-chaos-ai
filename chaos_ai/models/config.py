@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
+import chaos_ai.constants as const
 
 
 class PodScenarioConfig(BaseModel):
@@ -59,6 +60,13 @@ class ConfigFile(BaseModel):
 
     generations: int = 20  # Total number of generations to run.
     population_size: int = 10  # Initial population size
+
+    mutation_rate: float = const.MUTATION_RATE  # How often mutation should occur for each scenario parameter (0.0-1.0)
+    crossover_rate: float = const.CROSSOVER_RATE    # How often crossover should occur for each scenario parameter (0.0-1.0)
+    composition_rate: float = const.CROSSOVER_COMPOSITION_RATE  # How often a crossover would lead to composition (0.0-1.0)
+
+    population_injection_rate: float = const.POPULATION_INJECTION_RATE  # How often a random samples gets added to new population (0.0-1.0)
+    population_injection_size: int = const.POPULATION_INJECTION_SIZE    # What's the size of random samples that gets added to new population
 
     fitness_function: FitnessFunction
 

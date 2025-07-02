@@ -5,27 +5,31 @@ import random
 from typing import List
 
 from chaos_ai.models.app import CommandRunResult, KrknRunnerType
-from chaos_ai.models.base_scenario import Scenario, ScenarioFactory
+from chaos_ai.models.base_scenario import (
+    BaseScenario,
+    Scenario,
+    CompositeDependency,
+    CompositeScenario,
+    ScenarioFactory
+)
 from chaos_ai.models.config import ConfigFile
 from chaos_ai.utils.logger import get_module_logger
 from chaos_ai.chaos_engines.krkn_runner import KrknRunner
 
 logger = get_module_logger(__name__)
 
-DEBUG_MODE = True
-MUTATION_RATE = 0.6
-CROSSOVER_RATE = 0.8
-
-POPULATION_INJECTION_RATE = 0.35
-POPULATION_INJECTION_SIZE = 2
-
 
 class GeneticAlgorithm:
     '''
     A class implementing a Genetic Algorithm for scenario optimization.
     '''
-    def __init__(self, config: ConfigFile):
-        self.krkn_client = KrknRunner(config, runner_type=KrknRunnerType.CLI_RUNNER)
+    def __init__(self, config: ConfigFile, output_dir: str):
+        self.krkn_client = KrknRunner(
+            config,
+            output_dir=output_dir,
+            runner_type=KrknRunnerType.CLI_RUNNER
+        )
+        self.output_dir = output_dir
         self.config = config
         self.population = []
 
@@ -72,18 +76,34 @@ class GeneticAlgorithm:
             self.population = []
             for _ in range(self.config.population_size // 2):
                 parent1, parent2 = self.select_parents(fitness_scores)
-                child1, child2 = self.crossover(
-                    copy.deepcopy(parent1), copy.deepcopy(parent2)
-                )
-                child1 = self.mutate(child1)
-                child2 = self.mutate(child2)
+                child1, child2 = None, None
+                if random.random() < self.config.composition_rate:
+                    # componention crossover to generate 1 scenario
+                    child1 = self.composition(
+                        copy.deepcopy(parent1), copy.deepcopy(parent2)
+                    )
+                    child1 = self.mutate(child1)
+                    self.population.append(child1)
 
-                self.population.append(child1)
-                self.population.append(child2)
+                    child2 = self.composition(
+                        copy.deepcopy(parent2), copy.deepcopy(parent1)
+                    )
+                    child2 = self.mutate(child2)
+                    self.population.append(child2)
+                else:
+                    # Crossover of 2 parents to generate 2 offsprings
+                    child1, child2 = self.crossover(
+                        copy.deepcopy(parent1), copy.deepcopy(parent2)
+                    )
+                    child1 = self.mutate(child1)
+                    child2 = self.mutate(child2)
+
+                    self.population.append(child1)
+                    self.population.append(child2)
 
             # Inject random members to population to diversify scenarios
-            if random.random() < POPULATION_INJECTION_RATE:
-                self.create_population(POPULATION_INJECTION_SIZE)
+            if random.random() < self.config.population_injection_rate:
+                self.create_population(self.config.population_injection_size)
 
     def create_population(self, population_size):
         """Generate random population for algorithm"""
@@ -101,7 +121,7 @@ class GeneticAlgorithm:
                 already_seen.add(scenario)
                 count += 1
 
-    def calculate_fitness(self, scenario: Scenario, generation_id: int):
+    def calculate_fitness(self, scenario: BaseScenario, generation_id: int):
         # If scenario has already been run, do not run it again.
         # we will rely on mutation for the same parents to produce newer samples
         if scenario in self.seen_population:
@@ -111,9 +131,13 @@ class GeneticAlgorithm:
             return scenario
         return self.krkn_client.run(scenario, generation_id)
 
-    def mutate(self, scenario: Scenario):
+    def mutate(self, scenario: BaseScenario):
+        if isinstance(scenario, CompositeScenario):
+            scenario.scenario_a = self.mutate(scenario.scenario_a)
+            scenario.scenario_b = self.mutate(scenario.scenario_b)
+            return scenario
         for param in scenario.parameters:
-            if random.random() < MUTATION_RATE:
+            if random.random() < self.config.mutation_rate:
                 param.mutate()
         return scenario
 
@@ -137,7 +161,27 @@ class GeneticAlgorithm:
         parent2 = random.choices(scenarios, weights=probabilities, k=1)[0]
         return parent1, parent2
 
-    def crossover(self, scenario_a: Scenario, scenario_b: Scenario):
+    def crossover(self, scenario_a: BaseScenario, scenario_b: BaseScenario):
+        if isinstance(scenario_a, CompositeScenario) and isinstance(scenario_b, CompositeScenario):
+            # Handle both scenario are composite
+            # by swapping one of the branches
+            scenario_a.scenario_b, scenario_b.scenario_b = scenario_b.scenario_b, scenario_a.scenario_b
+            return scenario_a, scenario_b
+        elif isinstance(scenario_a, CompositeScenario) or isinstance(scenario_b, CompositeScenario):
+            # Only one of them is composite
+            if isinstance(scenario_a, CompositeScenario):
+                # Scenario A is composite and B is not
+                # Swap scenario_a's right node with scenario_b
+                a_b = scenario_a.scenario_b
+                scenario_a.scenario_b = scenario_b
+                return scenario_a, a_b
+            else:
+                # Scenario B is composite and A is not
+                # Swap scenario_a's right node with scenario_b
+                b_a = scenario_b.scenario_a
+                scenario_b.scenario_a = scenario_a
+                return b_a, scenario_b
+
         common_params = set([x.name for x in scenario_a.parameters]) & set(
             [x.name for x in scenario_b.parameters]
         )
@@ -154,7 +198,7 @@ class GeneticAlgorithm:
         else:
             # if there are common params, lets switch values between them
             for param in common_params:
-                if random.random() < CROSSOVER_RATE:
+                if random.random() < self.config.crossover_rate:
                     # find index of param in list
                     a_index = find_param_index(scenario_a, param)
                     b_index = find_param_index(scenario_b, param)
@@ -168,10 +212,30 @@ class GeneticAlgorithm:
 
             return scenario_a, scenario_b
 
-    def save(self, output_dir: str):
+    def composition(self, scenario_a: BaseScenario, scenario_b: BaseScenario):
+        # combines two scenario to create a single composite scenario
+        dependency = random.choice([
+            CompositeDependency.NONE,
+            CompositeDependency.A_ON_B,
+            CompositeDependency.B_ON_A
+        ])
+        composite_scenario = CompositeScenario(
+            name="composite",
+            scenario_a=scenario_a,
+            scenario_b=scenario_b,
+            dependency=dependency
+        )
+        return composite_scenario
+
+    def save(self):
+        '''Save run results'''
+        self.save_generations()
+        self.save_best_generations()
+
+    def save_generations(self):
         logger.info("Saving results to generations.json")
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
+        output_dir = self.output_dir
+        os.makedirs(output_dir, exist_ok=True)
         with open(
             os.path.join(output_dir, "generations.json"),
             "w",
@@ -201,6 +265,24 @@ class GeneticAlgorithm:
                     data[generation_id] = [scenario_result]
 
             json.dump(data, f, indent=4)
+
+    def save_best_generations(self):
+        logger.info("Saving results to best-generations.json")
+        output_dir = self.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        with open(
+            os.path.join(output_dir, "best-generations.json"),
+            "w",
+            encoding="utf-8"
+        ) as f:
+            best_generations = self.best_of_generation[:]
+            for i in range(len(best_generations)):
+                scenario_result = best_generations[i].model_dump()
+                del scenario_result['log']
+                scenario_result['start_time'] = (scenario_result['start_time']).isoformat()
+                scenario_result['end_time'] = (scenario_result['end_time']).isoformat()
+                best_generations[i] = scenario_result
+            json.dump(best_generations, f, indent=4)
 
     def save_log_file(self, job_id: str, log_data: str, output_dir: str):
         dir_path = os.path.join(output_dir, 'logs')

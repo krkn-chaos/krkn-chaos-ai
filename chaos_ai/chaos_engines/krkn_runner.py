@@ -1,12 +1,20 @@
 import os
 import json
+import random
 import datetime
+import tempfile
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
 from chaos_ai.models.app import CommandRunResult, KrknRunnerType
 from chaos_ai.models.config import ConfigFile, FitnessFunctionType
-from chaos_ai.models.base_scenario import Scenario
-from chaos_ai.utils.fs import run_shell
+from chaos_ai.models.base_scenario import (
+    Scenario,
+    BaseScenario,
+    CompositeScenario,
+    CompositeDependency,
+    ScenarioFactory
+)
+from chaos_ai.utils.fs import run_shell, env_is_truthy
 from chaos_ai.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -15,27 +23,47 @@ logger = get_module_logger(__name__)
 
 PODMAN_TEMPLATE = 'podman run --env-host=true -e PUBLISH_KRAKEN_STATUS="False" -e TELEMETRY_PROMETHEUS_BACKUP="False" -e WAIT_DURATION=0 {env_list} --net=host -v {kubeconfig}:/home/krkn/.kube/config:Z containers.krkn-chaos.dev/krkn-chaos/krkn-hub:{name}'
 
-KRKNCTL_TEMPLATE = 'krknctl run {name} --telemetry-prometheus-backup False --wait-duration 0 --kubeconfig {kubeconfig} {env_list}'
+KRKNCTL_TEMPLATE = "krknctl run {name} --telemetry-prometheus-backup False --wait-duration 0 --kubeconfig {kubeconfig} {env_list}"
+
+KRKNCTL_GRAPH_RUN_TEMPLATE = "krknctl graph run {path} --kubeconfig {kubeconfig}"
 
 KRKN_HUB_FAILURE_SCORE = 5
 
 
 class KrknRunner:
-    def __init__(self, config: ConfigFile, runner_type: KrknRunnerType = KrknRunnerType.HUB_RUNNER):
+    def __init__(
+        self,
+        config: ConfigFile,
+        output_dir: str,
+        runner_type: KrknRunnerType = KrknRunnerType.HUB_RUNNER,
+    ):
         self.config = config
         self.prom_client = self.__connect_prom_client()
         self.runner_type = runner_type
+        self.output_dir = output_dir
 
-    def run(self, scenario: Scenario, generation_id: int) -> CommandRunResult:
+    def run(self, scenario: BaseScenario, generation_id: int) -> CommandRunResult:
         logger.debug("Running scenario %s", scenario)
-
-        command = self.runner_command(scenario)
 
         start_time = datetime.datetime.now()
 
-        log, returncode = run_shell(command)
-        # log = ""
-        # returncode = 0
+        # Generate command krkn executor command
+        log, returncode = None, None
+        command = ""
+        if isinstance(scenario, CompositeScenario):
+            command = self.graph_command(scenario)
+        elif isinstance(scenario, Scenario):
+            command = self.runner_command(scenario)
+        else:
+            raise NotImplementedError("Scenario unable to run")
+
+        # Run command and fetch result
+        if env_is_truthy('MOCK_RUN'):
+            # Used for running mock tests
+            log, returncode = "", 0
+        else:
+            # TODO: How to capture logs from composite run scenario
+            log, returncode = run_shell(command)
 
         end_time = datetime.datetime.now()
 
@@ -59,12 +87,12 @@ class KrknRunner:
         )
 
     def runner_command(self, scenario: Scenario):
-        '''Generate command for krkn runner (krknctl, krknhub)'''
+        """Generate command for krkn runner (krknctl, krknhub)"""
         if self.runner_type == KrknRunnerType.HUB_RUNNER:
             # Generate env items
             env_list = ""
             for parameter in scenario.parameters:
-                env_list += f' -e {parameter.name}="{parameter.value}" '
+                env_list += f' -e {parameter.name}="{parameter.get_value()}" '
 
             command = PODMAN_TEMPLATE.format(
                 env_list=env_list,
@@ -79,7 +107,7 @@ class KrknRunner:
             env_list = ""
             for parameter in scenario.parameters:
                 param_name = (parameter.name).lower().replace("_", "-")
-                env_list += f'--{param_name} "{parameter.value}" '
+                env_list += f'--{param_name} "{parameter.get_value()}" '
 
             command = KRKNCTL_TEMPLATE.format(
                 env_list=env_list,
@@ -88,6 +116,111 @@ class KrknRunner:
             )
             return command
         raise Exception("Unsupported runner type")
+
+    def graph_command(self, scenario: CompositeScenario):
+        # Create directory under output folder to save CompositeScenario config
+        graph_json_directory = os.path.join(self.output_dir, "graphs")
+        os.makedirs(graph_json_directory, exist_ok=True)
+
+        # Create JSON for krknctl graph runner
+        scenario_json = self.__expand_composite_json(scenario)
+        json_file = tempfile.mktemp(suffix=".json", dir=graph_json_directory)
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(scenario_json, f, ensure_ascii=False, indent=4)
+        logger.info("Created scenario json in path: %s", json_file)
+
+        # Run Json graph
+        command = KRKNCTL_GRAPH_RUN_TEMPLATE.format(
+            path=json_file, kubeconfig=self.config.kubeconfig_file_path
+        )
+        return command
+
+    def __expand_composite_json(
+        self,
+        scenario: CompositeScenario,
+        root: str = "$",
+        depends_on: str = None
+    ):
+        result = {}
+        scenario_a = scenario.scenario_a
+        scenario_b = scenario.scenario_b
+
+        key_root = root
+        key_a = root + "l"
+        key_b = root + "r"
+
+        # Create a dummy scenario which will be the root for scenario A and B.
+        if scenario.dependency == CompositeDependency.NONE:
+            result[key_root] = self.__generate_scenario_json(
+                ScenarioFactory.create_dummy_scenario(),
+                depends_on=depends_on
+            )
+
+        # Generate json for scenario A
+        if isinstance(scenario_a, CompositeScenario):
+            # Generate Dependency Key
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = key_b
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.NONE:
+                key = key_root
+
+            # Since we are traversing left of the tree, key_a will contain the unique parent id 
+            result.update(self.__expand_composite_json(scenario_a, key_a, depends_on=key))
+        elif isinstance(scenario_a, Scenario):
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = key_b
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.NONE:
+                key = key_root
+
+            result[key_a] = self.__generate_scenario_json(
+                scenario_a,
+                depends_on=key,
+            )
+
+        # Generate json for scenario B
+        if isinstance(scenario_b, CompositeScenario):
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = key_b
+            elif scenario.dependency == CompositeDependency.NONE:
+                key = key_root
+
+            # Since we are traversing right of the tree, key_b will contain the unique parent id
+            result.update(self.__expand_composite_json(scenario_b, key_b, depends_on=key))
+        elif isinstance(scenario_b, Scenario):
+            key = None
+            if scenario.dependency == CompositeDependency.A_ON_B:
+                key = depends_on
+            elif scenario.dependency == CompositeDependency.B_ON_A:
+                key = key_a
+            elif scenario.dependency == CompositeDependency.NONE:
+                key = key_root
+            result[key_b] = self.__generate_scenario_json(
+                scenario_b,
+                depends_on=key,
+            )
+
+        return result
+
+    def __generate_scenario_json(self, scenario: Scenario, depends_on: str = None):
+        # generate a json based on https://krkn-chaos.dev/docs/krknctl/randomized-chaos-testing/#example
+        env = {param.name: str(param.get_value()) for param in scenario.parameters}
+        result = {
+            "image": f"containers.krkn-chaos.dev/krkn-chaos/krkn-hub:{scenario.name}",
+            "name": scenario.name,
+            "env": env,
+        }
+        if depends_on is not None:
+            result["depends_on"] = depends_on
+        return result
 
     def __connect_prom_client(self):
         # Fetch Prometheus query endpoint
@@ -112,8 +245,9 @@ class KrknRunner:
         return KrknPrometheus(f"https://{url}", token.strip())
 
     def calculate_fitness(self, start, end):
-        '''Calculate fitness score for scenario run'''
-        # return random.randint(0, 10)
+        """Calculate fitness score for scenario run"""
+        if env_is_truthy("MOCK_FITNESS"):
+            return random.random()
         try:
             if self.config.fitness_function.type == FitnessFunctionType.point:
                 return self.calculate_point_fitness(start, end)
@@ -124,16 +258,16 @@ class KrknRunner:
             raise error
 
     def calculate_point_fitness(self, start, end):
-        '''Takes difference between fitness function at start/end intervals of test.
-           Helpful to measure values for counter based metric like restarts. 
-        '''
+        """Takes difference between fitness function at start/end intervals of test.
+        Helpful to measure values for counter based metric like restarts.
+        """
         logger.info("Calculating Point Fitness")
         result_at_beginning = self.prom_client.process_prom_query_in_range(
-                self.config.fitness_function.query,
-                start_time=start,
-                end_time=start,
-                granularity=100,
-            )[0]["values"][-1][1]
+            self.config.fitness_function.query,
+            start_time=start,
+            end_time=start,
+            granularity=100,
+        )[0]["values"][-1][1]
 
         result_at_end = self.prom_client.process_prom_query_in_range(
             self.config.fitness_function.query,
@@ -145,25 +279,27 @@ class KrknRunner:
         return float(result_at_end) - float(result_at_beginning)
 
     def calculate_range_fitness(self, start, end):
-        '''
+        """
         Measure fitness function for the range of test.
         Helpful to measure value over period of time like max cpu usage, max memory usage over time, etc.
 
         config.fitness_function.query can specify a dynamic "$range$" parameter that will be replaced
         when calling below function.
-        '''
+        """
         logger.info("Calculating Range Fitness")
 
         query = self.config.fitness_function.query
         # Calculate number of minutes between test run
 
-        if '$range$' in query:
+        if "$range$" in query:
             time_dt_mins = int((end - start).total_seconds() / 60)
             if time_dt_mins == 0:
                 time_dt_mins = 1
-            query = query.replace('$range$', f'{time_dt_mins}m')
+            query = query.replace("$range$", f"{time_dt_mins}m")
         else:
-            logger.warning("You are missing $range$ in config.fitness_function.query to specify dynamic range. Fitness function will use specified range")
+            logger.warning(
+                "You are missing $range$ in config.fitness_function.query to specify dynamic range. Fitness function will use specified range"
+            )
 
         result = self.prom_client.process_prom_query_in_range(
             query,

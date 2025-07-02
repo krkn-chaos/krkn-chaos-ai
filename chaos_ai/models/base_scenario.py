@@ -1,4 +1,5 @@
 import random
+from enum import Enum
 from typing import List
 from pydantic import BaseModel
 import chaos_ai.models.base_scenario_parameter as param
@@ -9,8 +10,11 @@ from chaos_ai.utils.logger import get_module_logger
 logger = get_module_logger(__name__)
 
 
-class Scenario(BaseModel):
+class BaseScenario(BaseModel):
     name: str
+
+
+class Scenario(BaseScenario):
     parameters: List[param.BaseParameter]
 
     def __str__(self):
@@ -27,6 +31,26 @@ class Scenario(BaseModel):
     def __hash__(self):
         self_params = ", ".join([str(x.value) for x in self.parameters])
         return hash((self.name, self_params))
+
+
+class CompositeDependency(Enum):
+    A_ON_B = 1
+    B_ON_A = 2
+    NONE = 0
+
+
+class CompositeScenario(BaseScenario):
+    scenario_a: BaseScenario
+    scenario_b: BaseScenario
+    dependency: CompositeDependency
+
+    def __eq__(self, other):
+        if not isinstance(other, CompositeScenario):
+            return NotImplemented
+        return self.name == other.name and hash(other) == hash(self)
+
+    def __hash__(self):
+        return hash(tuple([self.scenario_a, self.scenario_b]))
 
 
 class ScenarioFactory:
@@ -185,4 +209,14 @@ class ScenarioFactory:
                 param.NumberOfNodesParameter(),
                 param.HogScenarioImageParameter(),
             ],
+        )
+
+    @staticmethod
+    def create_dummy_scenario():
+        return Scenario(
+            name="dummy-scenario",
+            parameters=[
+                param.DummyParameter(name="END", value=10),
+                param.DummyParameter(name="EXIT_STATUS", value=0),
+            ]
         )
