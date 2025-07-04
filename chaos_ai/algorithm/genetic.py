@@ -1,6 +1,7 @@
 import os
 import copy
 import json
+import yaml
 import random
 from typing import List
 
@@ -63,10 +64,10 @@ class GeneticAlgorithm:
             # Find the best individual in the current generation
             # Note: If there is no best solution, it will still consider based on sorting order
             fitness_scores = sorted(
-                fitness_scores, key=lambda x: x.fitness_score, reverse=True
+                fitness_scores, key=lambda x: x.fitness_result.fitness_score, reverse=True
             )
             self.best_of_generation.append(fitness_scores[0])
-            logger.info("Best Fitness: %f", fitness_scores[0].fitness_score)
+            logger.info("Best Fitness: %f", fitness_scores[0].fitness_result.fitness_score)
 
             # We don't want to add a same parent back to population since its already been included
             for fitness_result in fitness_scores:
@@ -146,7 +147,7 @@ class GeneticAlgorithm:
         Selects two parents using Roulette Wheel Selection (proportionate selection).
         Higher fitness means higher chance of being selected.
         """
-        total_fitness = sum([x.fitness_score for x in fitness_scores])
+        total_fitness = sum([x.fitness_result.fitness_score for x in fitness_scores])
 
         scenarios = [x.scenario for x in fitness_scores]
 
@@ -154,7 +155,7 @@ class GeneticAlgorithm:
             return random.choice(scenarios), random.choice(scenarios)
 
         # Normalize fitness scores to get probabilities
-        probabilities = [x.fitness_score / total_fitness for x in fitness_scores]
+        probabilities = [x.fitness_result.fitness_score / total_fitness for x in fitness_scores]
 
         # Select parents based on probabilities
         parent1 = random.choices(scenarios, weights=probabilities, k=1)[0]
@@ -229,8 +230,21 @@ class GeneticAlgorithm:
 
     def save(self):
         '''Save run results'''
+        self.save_config()
         self.save_generations()
         self.save_best_generations()
+
+    def save_config(self):
+        logger.info("Saving config file to config.yaml")
+        output_dir = self.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        with open(
+            os.path.join(output_dir, "config.yaml"),
+            "w",
+            encoding="utf-8"
+        ) as f:
+            config_data = self.config.model_dump(mode='json')
+            yaml.dump(config_data, f, sort_keys=False)
 
     def save_generations(self):
         logger.info("Saving results to generations.json")

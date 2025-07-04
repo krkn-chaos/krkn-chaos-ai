@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import List, Optional, Union, Iterator
+from pydantic import BaseModel, Field, field_validator, model_validator
 import chaos_ai.constants as const
 
 
@@ -49,10 +49,43 @@ class FitnessFunctionType(str, Enum):
     range = 'range'
 
 
-class FitnessFunction(BaseModel):
+# Simple Counter
+def id_generator() -> Iterator[int]:
+    i = 1
+    while True:
+        yield i
+        i += 1
+
+
+auto_id = id_generator()
+
+
+class FitnessFunctionItem(BaseModel):
+    id: int = Field(default_factory=lambda: next(auto_id))  # Auto-increment ID
     query: str  # PromQL
     type: FitnessFunctionType = FitnessFunctionType.point
+    weight: float = 1.0
+
+    @field_validator('weight', mode='after')
+    @classmethod
+    def is_percent(cls, value: float) -> float:
+        if value < 0 or value > 1:
+            raise ValueError(f'{value} is outside the range [0.0, 1.0]')
+        return value
+
+
+class FitnessFunction(BaseModel):
+    query: Union[str, None] = None  # PromQL
+    type: FitnessFunctionType = FitnessFunctionType.point
     include_krkn_failure: bool = False
+    items: List[FitnessFunctionItem] = []
+
+    @model_validator(mode='after')
+    def check_fitness_definition_exists(self):
+        '''Validates whether there is at least one fitness function is defined.'''
+        if self.query is None and len(self.items) == 0:
+            raise ValueError("Please define at least one fitness function in query or items.")
+        return self
 
 
 class ConfigFile(BaseModel):
