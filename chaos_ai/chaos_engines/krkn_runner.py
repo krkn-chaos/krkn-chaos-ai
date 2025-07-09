@@ -5,7 +5,7 @@ import datetime
 import tempfile
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
-from chaos_ai.models.app import CommandRunResult, KrknRunnerType
+from chaos_ai.models.app import CommandRunResult, FitnessResult, FitnessScoreResult, KrknRunnerType
 from chaos_ai.models.config import ConfigFile, FitnessFunctionType
 from chaos_ai.models.base_scenario import (
     Scenario,
@@ -67,13 +67,31 @@ class KrknRunner:
 
         end_time = datetime.datetime.now()
 
-        fitness = self.calculate_fitness(start_time, end_time)
+        # calculate fitness scores
+        fitness_result: FitnessResult = FitnessResult()
+
+        # If user provided fitness_function.query, then we use the default function to calculate
+        if self.config.fitness_function.query is not None:
+            fitness_value = self.calculate_fitness_value(
+                start=start_time,
+                end=end_time,
+                query=self.config.fitness_function.query,
+                fitness_type=self.config.fitness_function.type
+            )
+            fitness_result = FitnessResult(
+                fitness_score=fitness_value
+            )
+        elif len(self.config.fitness_function.items) > 0:
+            fitness_result = self.calculate_fitness_score_for_items(
+                start=start_time,
+                end=end_time
+            )
 
         # Include krkn hub run failure info to the fitness score
         if self.config.fitness_function.include_krkn_failure:
             # Status code 2 means that SLOs not met per Krkn test
             if returncode == 2:
-                fitness += KRKN_HUB_FAILURE_SCORE
+                fitness_result.fitness_score += KRKN_HUB_FAILURE_SCORE
 
         return CommandRunResult(
             generation_id=generation_id,
@@ -83,7 +101,7 @@ class KrknRunner:
             returncode=returncode,
             start_time=start_time,
             end_time=end_time,
-            fitness_score=fitness,
+            fitness_result=fitness_result
         )
 
     def runner_command(self, scenario: Scenario):
@@ -244,33 +262,62 @@ class KrknRunner:
 
         return KrknPrometheus(f"https://{url}", token.strip())
 
-    def calculate_fitness(self, start, end):
+    def calculate_fitness_value(self, start, end, query, fitness_type):
         """Calculate fitness score for scenario run"""
         if env_is_truthy("MOCK_FITNESS"):
             return random.random()
+
         try:
-            if self.config.fitness_function.type == FitnessFunctionType.point:
-                return self.calculate_point_fitness(start, end)
-            elif self.config.fitness_function.type == FitnessFunctionType.range:
-                return self.calculate_range_fitness(start, end)
+            if fitness_type == FitnessFunctionType.point:
+                return self.calculate_point_fitness(start, end, query)
+            elif fitness_type == FitnessFunctionType.range:
+                return self.calculate_range_fitness(start, end, query)
         except Exception as error:
             logger.error("Fitness function calculation failed: %s", error)
             raise error
 
-    def calculate_point_fitness(self, start, end):
+    def calculate_fitness_score_for_items(self, start, end):
+        '''
+        This is used to compute fitness scores when multiple SLOs are defined.
+        '''
+        results = []
+        overall_score = 0
+        for fitness_item in self.config.fitness_function.items:
+            raw_score = self.calculate_fitness_value(
+                start=start,
+                end=end,
+                query=fitness_item.query,
+                fitness_type=fitness_item.type
+            )
+            fitness_value = fitness_item.weight * raw_score
+            overall_score += fitness_value
+
+            # Store Result
+            results.append(FitnessScoreResult(
+                id=fitness_item.id,
+                fitness_score=raw_score,
+                weighted_score=fitness_value
+            ))
+
+        return FitnessResult(
+            fitness_score=overall_score,
+            scores=results
+        )
+
+    def calculate_point_fitness(self, start, end, query):
         """Takes difference between fitness function at start/end intervals of test.
         Helpful to measure values for counter based metric like restarts.
         """
         logger.info("Calculating Point Fitness")
         result_at_beginning = self.prom_client.process_prom_query_in_range(
-            self.config.fitness_function.query,
+            query,
             start_time=start,
             end_time=start,
             granularity=100,
         )[0]["values"][-1][1]
 
         result_at_end = self.prom_client.process_prom_query_in_range(
-            self.config.fitness_function.query,
+            query,
             start_time=end,
             end_time=end,
             granularity=100,
@@ -278,7 +325,7 @@ class KrknRunner:
 
         return float(result_at_end) - float(result_at_beginning)
 
-    def calculate_range_fitness(self, start, end):
+    def calculate_range_fitness(self, start, end, query):
         """
         Measure fitness function for the range of test.
         Helpful to measure value over period of time like max cpu usage, max memory usage over time, etc.
@@ -288,9 +335,7 @@ class KrknRunner:
         """
         logger.info("Calculating Range Fitness")
 
-        query = self.config.fitness_function.query
         # Calculate number of minutes between test run
-
         if "$range$" in query:
             time_dt_mins = int((end - start).total_seconds() / 60)
             if time_dt_mins == 0:
