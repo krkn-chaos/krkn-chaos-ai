@@ -16,7 +16,11 @@ uv pip install -e .
 export DEMO_NAMESPACE=robot-shop
 export IS_OPENSHIFT=true
 ./scripts/setup-demo-microservice.sh
+
 oc config set-context --current --namespace=robot-shop
+
+# To expose web services through nginx reverse-proxy
+./scripts/setup-nginx.sh
 ```
 
 ## Running the Chaos AI CLI

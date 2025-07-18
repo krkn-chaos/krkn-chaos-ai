@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  nginx.conf: |
+    events {}
+
+    http {
+        upstream cart_service {
+            server cart:8080;
+        }
+
+        upstream catalogue_service {
+            server catalogue:8080;
+        }
+
+        upstream payment_service {
+            server payment:8080;
+        }
+
+        upstream ratings_service {
+            server ratings:80;
+        }
+
+        upstream shipping_service {
+            server shipping:8080;
+        }
+
+        upstream user_service {
+            server user:8080;
+        }
+
+        upstream web_service {
+            server web:8080;
+        }
+
+        server {
+            listen 8080;
+
+            # Proxy /cart -> cart:8080
+            location /cart/ {
+                proxy_pass http://cart_service/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Proxy /catalogue -> catalogue:8080
+            location /catalogue/ {
+                proxy_pass http://catalogue_service/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Proxy /payment -> payment:8080
+            location /payment/ {
+                proxy_pass http://payment_service/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Proxy /ratings -> ratings:80
+            location /ratings/ {
+                proxy_pass http://ratings_service/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Proxy /shipping -> shipping:8080
+            location /shipping/ {
+                proxy_pass http://shipping_service/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Proxy /user -> user:8080
+            location /user/ {
+                proxy_pass http://user_service/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Proxy /web -> web:8080
+            location /web/ {
+                proxy_pass http://web_service/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Optional: fallback
+            location / {
+                return 404;
+            }
+        }
+    }
