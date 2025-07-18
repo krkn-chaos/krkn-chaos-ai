@@ -17,11 +17,19 @@ export DEMO_NAMESPACE=robot-shop
 export IS_OPENSHIFT=true
 ./scripts/setup-demo-microservice.sh
 
-oc config set-context --current --namespace=robot-shop
-
-# To expose web services through nginx reverse-proxy
-./scripts/setup-nginx.sh
+oc config set-context --current --namespace=$DEMO_NAMESPACE
 ```
+
+### Testing Microservice routes
+
+```
+# Setup NGINX reverse proxy
+./scripts/setup-nginx.sh
+
+# Test endpoints
+./tests/test-nginx-routes.sh
+```
+
 
 ## Running the Chaos AI CLI
 
