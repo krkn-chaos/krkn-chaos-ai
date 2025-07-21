@@ -1,9 +1,10 @@
 from pydantic import BaseModel
 import datetime
 from enum import Enum
-from typing import List
+from typing import Dict, List
 
 from chaos_ai.models.base_scenario import BaseScenario
+from chaos_ai.models.config import HealthCheckResult
 
 
 class FitnessScoreResult(BaseModel):
@@ -26,6 +27,7 @@ class CommandRunResult(BaseModel):
     start_time: datetime.datetime   # Start date timestamp of the test 
     end_time: datetime.datetime     # End date timestamp of the test
     fitness_result: FitnessResult   # Fitness result measured for scenario.
+    health_check_results: Dict[str, List[HealthCheckResult]] = {}
 
 
 class KrknRunnerType(str, Enum):

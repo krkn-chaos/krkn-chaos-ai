@@ -5,6 +5,7 @@ import datetime
 import tempfile
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
+from chaos_ai.chaos_engines.health_check_watcher import HealthCheckWatcher
 from chaos_ai.models.app import CommandRunResult, FitnessResult, FitnessScoreResult, KrknRunnerType
 from chaos_ai.models.config import ConfigFile, FitnessFunctionType
 from chaos_ai.models.base_scenario import (
@@ -63,7 +64,16 @@ class KrknRunner:
             log, returncode = "", 0
         else:
             # TODO: How to capture logs from composite run scenario
+            
+            # Start watching application urls for health checks
+            health_check_watcher = HealthCheckWatcher(self.config.health_checks)
+            health_check_watcher.run()
+
+            # Run command
             log, returncode = run_shell(command)
+            
+            # Stop watching application urls for health checks
+            health_check_watcher.stop()
 
         end_time = datetime.datetime.now()
 
@@ -101,7 +111,8 @@ class KrknRunner:
             returncode=returncode,
             start_time=start_time,
             end_time=end_time,
-            fitness_result=fitness_result
+            fitness_result=fitness_result,
+            health_check_results=health_check_watcher.get_results()
         )
 
     def runner_command(self, scenario: Scenario):

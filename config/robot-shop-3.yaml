@@ -1,0 +1,35 @@
+kubeconfig_file_path: "./tmp/kubeconfig.yaml"
+
+generations: 1
+population_size: 3
+composition_rate: 0
+population_injection_rate: 0
+
+fitness_function: 
+  query: 'sum(kube_pod_container_status_restarts_total{namespace="robot-shop"})'
+  type: point
+  include_krkn_failure: true
+
+health_checks:
+  - url: "/cart/add/1/Watson/1"
+  - url: "/catalogue/categories"
+  - url: "/shipping/codes"
+  - url: "/payment/health"
+  - url: "/user/uniqueid"
+  - url: "/ratings/api/fetch/Watson"
+
+
+scenario:
+  pod-scenarios:
+    namespace:
+      - robot-shop
+    pod_label:
+      - service=mongodb
+      - service=mysql
+      - service=redis
+      - service=cart
+      - service=rabbitmq
+      - service=user
+      - service=shipping
+      - service=payment
+      - service=catalogue

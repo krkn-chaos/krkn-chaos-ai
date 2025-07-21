@@ -1,3 +1,4 @@
+import datetime
 from enum import Enum
 from typing import List, Optional, Union, Iterator
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -88,6 +89,25 @@ class FitnessFunction(BaseModel):
         return self
 
 
+class HealthCheckConfig(BaseModel):
+    '''
+    Health check configuration for the application.
+    This is used to check the health of the application.
+    '''
+    url: str
+    status_code: int = 200  # Expected status code
+    timeout: int = 5   # in seconds
+    interval: int = 2   # in seconds
+
+
+class HealthCheckResult(BaseModel):
+    timestamp: str = Field(default_factory=lambda: datetime.datetime.now().isoformat())
+    response_time: float  # in seconds
+    status_code: int    # actual status code
+    success: bool       # True if status code is as expected
+    error: Optional[str] = None # Error message if the status code is not as expected
+
+
 class ConfigFile(BaseModel):
     kubeconfig_file_path: str  # Path to kubeconfig
 
@@ -102,5 +122,6 @@ class ConfigFile(BaseModel):
     population_injection_size: int = const.POPULATION_INJECTION_SIZE    # What's the size of random samples that gets added to new population
 
     fitness_function: FitnessFunction
+    health_checks: List[HealthCheckConfig] = []
 
     scenario: ScenarioConfig = ScenarioConfig()

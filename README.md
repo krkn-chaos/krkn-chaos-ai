@@ -34,9 +34,12 @@ oc config set-context --current --namespace=$DEMO_NAMESPACE
 ## Running the Chaos AI CLI
 
 ```
-# Set Prometheus reader parameters
+# Set Prometheus reader parameters (Optional), will also try to read from cluster during test
 export PROMETHEUS_URL=''
 export PROMETHEUS_TOKEN=''
+
+# Update cluster kubeconfig
+export KUBECONFIG="<path to kubeconfig.yaml>"
 
 # Start chaos ai test
 $ uv run chaos_ai run  --help
