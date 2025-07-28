@@ -68,6 +68,8 @@ oc config set-context --current --namespace=$DEMO_NAMESPACE
 
 # Test application endpoints
 ./tests/test-nginx-routes.sh
+
+export HOST="http://$(kubectl get service rs -o json | jq -r '.status.loadBalancer.ingress[0].hostname')"
 ```
 
 ## 📝 Configuration
@@ -92,9 +94,9 @@ fitness_function:
 
 # Health endpoints to monitor
 health_checks:
-  - url: "/cart/add/1/Watson/1"
-  - url: "/catalogue/categories"
-  - url: "/shipping/codes"
+  - url: "$HOST/cart/add/1/Watson/1"
+  - url: "$HOST/catalogue/categories"
+  - url: "$HOST/shipping/codes"
 
 # Chaos scenarios to evolve
 scenario:
@@ -135,12 +137,12 @@ scenario:
 
 ```bash
 # Run chaos AI with default configuration
-uv run chaos_ai run -c config/robot-shop-default.yaml -o ./tmp/results/
+uv run chaos_ai run -c config/robot-shop-default.yaml -o ./tmp/results/ -p HOST=$HOST
 
 # With custom Prometheus settings
 export PROMETHEUS_URL='https://your-prometheus-url'
 export PROMETHEUS_TOKEN='your-prometheus-token'
-uv run chaos_ai run -c config/robot-shop-default.yaml -o ./tmp/results/
+uv run chaos_ai run -c config/robot-shop-default.yaml -o ./tmp/results/ -p HOST=$HOST
 ```
 
 ### CLI Options
@@ -150,9 +152,13 @@ $ uv run chaos_ai run --help
 Usage: chaos_ai run [OPTIONS]
 
 Options:
-  -c, --config TEXT  Path to chaos AI config file.
-  -o, --output TEXT  Directory to save results.
-  --help             Show this message and exit.
+  -c, --config TEXT               Path to chaos AI config file.
+  -o, --output TEXT               Directory to save results.
+  -r, --runner-type [krknctl|krknhub]
+                                  Type of chaos engine to use.
+  -p, --param TEXT                Additional parameters for config file in
+                                  key=value format.
+  --help                          Show this message and exit.
 ```
 
 ### Understanding Results
@@ -160,13 +166,20 @@ Options:
 Chaos AI saves results in the specified output directory:
 
 ```
-./tmp/results/
-├── generation_0/
-│   ├── scenario_1.json
-│   ├── scenario_2.json
-├── generation_1/
-│   └── ...
-└── best_scenarios.json
+.
+└── results/
+    ├── yaml/
+    │   ├── generation_0/
+    │   │   ├── scenario_1.json
+    │   │   └── scenario_2.json
+    │   └── generation_1/
+    │       └── ...
+    ├── log/
+    │   ├── scenario_1.json
+    │   ├── scenario_2.json
+    │   └── ...
+    ├── best_scenarios.json
+    └── config.yaml
 ```
 
 ## 🧬 How It Works

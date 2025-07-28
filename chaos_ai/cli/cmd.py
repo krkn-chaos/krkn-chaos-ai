@@ -15,14 +15,20 @@ logger = get_module_logger(__name__)
 def main():
     pass
 
-
+# TODO: Verbose mode
 @main.command()
 @click.option('--config', '-c', help='Path to chaos AI config file.')
 @click.option('--output', '-o', help='Directory to save results.')
 @click.option('--runner-type', '-r', 
               type=click.Choice(['krknctl', 'krknhub'], case_sensitive=False),
               help='Type of chaos engine to use.', default=None)
-def run(config: str, output: str = "./", runner_type: str = None):
+@click.option(
+    '--param', '-p',
+    multiple=True,
+    help='Additional parameters for config file in key=value format.',
+    default=[]
+)
+def run(config: str, output: str = "./", runner_type: str = None, param: list[str] = None):
     if config == '' or config is None:
         logger.warning("Config file invalid.")
         exit(1)
@@ -32,7 +38,7 @@ def run(config: str, output: str = "./", runner_type: str = None):
 
     try:
         logger.debug("Config File: %s", config)
-        parsed_config = read_config_from_file(config)
+        parsed_config = read_config_from_file(config, param)
         logger.debug("Successfully parsed config!")
     except ValidationError as err:
         logger.error("Unable to parse config file: %s", err)

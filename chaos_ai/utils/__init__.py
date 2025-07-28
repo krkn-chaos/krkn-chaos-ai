@@ -1,5 +1,5 @@
 # Simple Counter
-from typing import Iterator
+from typing import Dict, Iterator
 
 
 def id_generator() -> Iterator[int]:

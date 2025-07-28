@@ -55,6 +55,7 @@ class HealthCheckWatcher:
                 error = str(e)
 
             result = HealthCheckResult(
+                name=health_check.name,
                 status_code=status,
                 success=success,
                 error=error,

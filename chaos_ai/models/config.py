@@ -1,6 +1,6 @@
 import datetime
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 import chaos_ai.constants as const
 from chaos_ai.utils import id_generator
@@ -87,6 +87,7 @@ class HealthCheckConfig(BaseModel):
     Health check configuration for the application.
     This is used to check the health of the application.
     '''
+    name: str
     url: str
     status_code: int = 200  # Expected status code
     timeout: int = 5   # in seconds
@@ -94,6 +95,7 @@ class HealthCheckConfig(BaseModel):
 
 
 class HealthCheckResult(BaseModel):
+    name: str
     timestamp: str = Field(default_factory=lambda: datetime.datetime.now().isoformat())
     response_time: float  # in seconds
     status_code: int    # actual status code
@@ -103,6 +105,7 @@ class HealthCheckResult(BaseModel):
 
 class ConfigFile(BaseModel):
     kubeconfig_file_path: str  # Path to kubeconfig
+    parameters: Dict[str, str] = {}
 
     generations: int = 20  # Total number of generations to run.
     population_size: int = 10  # Initial population size
