@@ -14,6 +14,7 @@ from chaos_ai.models.base_scenario import (
     ScenarioFactory
 )
 from chaos_ai.models.config import ConfigFile
+from chaos_ai.utils import id_generator
 from chaos_ai.utils.logger import get_module_logger
 from chaos_ai.chaos_engines.krkn_runner import KrknRunner
 
@@ -40,6 +41,7 @@ class GeneticAlgorithm:
 
         self.seen_population = {}  # Map between scenario and its result
         self.best_of_generation = []
+        self.job_id_generator = id_generator()
 
         logger.info("CONFIG:")
         logger.info("%s", json.dumps(self.config.model_dump(), indent=2))
@@ -134,7 +136,10 @@ class GeneticAlgorithm:
             scenario = copy.deepcopy(self.seen_population[scenario])
             scenario.generation_id = generation_id
             return scenario
-        return self.krkn_client.run(scenario, generation_id)
+        scenario_result = self.krkn_client.run(scenario, generation_id)
+        job_id = next(self.job_id_generator)
+        self.save_scenario_result(job_id, scenario_result)
+        return scenario_result
 
     def mutate(self, scenario: BaseScenario):
         if isinstance(scenario, CompositeScenario):
@@ -234,8 +239,8 @@ class GeneticAlgorithm:
 
     def save(self):
         '''Save run results'''
+        # TODO: Create a single result file (results.json) that contains summary of all the results
         self.save_config()
-        self.save_generations()
         self.save_best_generations()
 
     def save_config(self):
@@ -250,46 +255,12 @@ class GeneticAlgorithm:
             config_data = self.config.model_dump(mode='json')
             yaml.dump(config_data, f, sort_keys=False)
 
-    def save_generations(self):
-        logger.info("Saving results to generations.json")
-        output_dir = self.output_dir
-        os.makedirs(output_dir, exist_ok=True)
-        with open(
-            os.path.join(output_dir, "generations.json"),
-            "w",
-            encoding="utf-8"
-        ) as f:
-            # Store data per generation
-            data = {}
-
-            for job_id, fitness_result in enumerate(self.seen_population.values()):
-                scenario_result = fitness_result.model_dump()
-                generation_id = scenario_result['generation_id']
-                scenario_result['job_id'] = job_id
-
-                # Store log in a log file and update log location
-                scenario_result['log'] = self.save_log_file(
-                    str(job_id),
-                    scenario_result['log'],
-                    output_dir
-                )
-                # Convert timestamps to ISO string
-                scenario_result['start_time'] = (scenario_result['start_time']).isoformat()
-                scenario_result['end_time'] = (scenario_result['end_time']).isoformat()
-
-                if generation_id in data:
-                    data[generation_id].append(scenario_result)
-                else:
-                    data[generation_id] = [scenario_result]
-
-            json.dump(data, f, indent=4)
-
     def save_best_generations(self):
-        logger.info("Saving results to best-generations.json")
+        logger.info("Saving results to best_scenarios.json")
         output_dir = self.output_dir
         os.makedirs(output_dir, exist_ok=True)
         with open(
-            os.path.join(output_dir, "best-generations.json"),
+            os.path.join(output_dir, "best_scenarios.json"),
             "w",
             encoding="utf-8"
         ) as f:
@@ -302,12 +273,36 @@ class GeneticAlgorithm:
                 best_generations[i] = scenario_result
             json.dump(best_generations, f, indent=4)
 
-    def save_log_file(self, job_id: str, log_data: str, output_dir: str):
-        dir_path = os.path.join(output_dir, 'logs')
-        if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
+    def save_log_file(self, job_id: str, log_data: str):
+        dir_path = os.path.join(self.output_dir, 'logs')
+        os.makedirs(dir_path, exist_ok=True)
         # Store log file in output directory under a "logs" folder.
-        log_save_path = os.path.join(dir_path, job_id + ".log")
+        log_save_path = os.path.join(dir_path, "scenario_%s.log" % job_id)
         with open(log_save_path, 'w', encoding='utf-8') as f:
             f.write(log_data)
         return log_save_path
+
+    def save_scenario_result(self, job_id: int, fitness_result: CommandRunResult):
+        logger.debug("Saving scenario result for job %s", job_id)
+        result = fitness_result.model_dump()
+        generation_id = result['generation_id']
+        result['job_id'] = job_id
+
+        # Store log in a log file and update log location
+        result['log'] = self.save_log_file(
+            str(job_id),
+            result['log']
+        )
+        # Convert timestamps to ISO string
+        result['start_time'] = (result['start_time']).isoformat()
+        result['end_time'] = (result['end_time']).isoformat()
+
+        output_dir = os.path.join(self.output_dir, "json", "generation_%s" % generation_id)
+        os.makedirs(output_dir, exist_ok=True)
+
+        with open(
+            os.path.join(output_dir, "scenario_%s.json" % job_id),
+            "w",
+            encoding="utf-8"
+        ) as file_handler:
+            json.dump(result, file_handler, indent=4)

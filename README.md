@@ -162,9 +162,8 @@ Chaos AI saves results in the specified output directory:
 ```
 ./tmp/results/
 ├── generation_0/
-│   ├── scenario_1.yaml
-│   ├── scenario_2.yaml
-│   └── fitness_scores.json
+│   ├── scenario_1.json
+│   ├── scenario_2.json
 ├── generation_1/
 │   └── ...
 └── best_scenarios.json

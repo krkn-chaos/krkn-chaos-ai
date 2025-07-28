@@ -1,8 +1,9 @@
 import datetime
 from enum import Enum
-from typing import List, Optional, Union, Iterator
+from typing import List, Optional, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 import chaos_ai.constants as const
+from chaos_ai.utils import id_generator
 
 
 class PodScenarioConfig(BaseModel):
@@ -48,14 +49,6 @@ class ScenarioConfig(BaseModel):
 class FitnessFunctionType(str, Enum):
     point = 'point'
     range = 'range'
-
-
-# Simple Counter
-def id_generator() -> Iterator[int]:
-    i = 1
-    while True:
-        yield i
-        i += 1
 
 
 auto_id = id_generator()
