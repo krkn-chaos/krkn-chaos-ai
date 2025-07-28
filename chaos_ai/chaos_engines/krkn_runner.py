@@ -44,6 +44,7 @@ class KrknRunner:
         if runner_type is None:
             self.runner_type = self.__check_runner_availability()
         else:
+            logger.debug("Using user provided runner type: %s", runner_type)
             self.runner_type = runner_type
 
 
@@ -87,6 +88,8 @@ class KrknRunner:
         else:
             raise NotImplementedError("Scenario unable to run")
 
+        health_check_watcher = HealthCheckWatcher(self.config.health_checks)
+
         # Run command and fetch result
         if env_is_truthy('MOCK_RUN'):
             # Used for running mock tests
@@ -95,7 +98,6 @@ class KrknRunner:
             # TODO: How to capture logs from composite run scenario
             
             # Start watching application urls for health checks
-            health_check_watcher = HealthCheckWatcher(self.config.health_checks)
             health_check_watcher.run()
 
             # Run command

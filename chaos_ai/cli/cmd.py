@@ -3,6 +3,7 @@ import click
 from pydantic import ValidationError
 from chaos_ai.utils.fs import read_config_from_file
 from chaos_ai.utils.logger import get_module_logger
+from chaos_ai.models.app import KrknRunnerType
 
 from chaos_ai.algorithm.genetic import GeneticAlgorithm
 
@@ -18,7 +19,10 @@ def main():
 @main.command()
 @click.option('--config', '-c', help='Path to chaos AI config file.')
 @click.option('--output', '-o', help='Directory to save results.')
-def run(config: str, output: str = "./"):
+@click.option('--runner-type', '-r', 
+              type=click.Choice(['krknctl', 'krknhub'], case_sensitive=False),
+              help='Type of chaos engine to use.', default=None)
+def run(config: str, output: str = "./", runner_type: str = None):
     if config == '' or config is None:
         logger.warning("Config file invalid.")
         exit(1)
@@ -34,9 +38,18 @@ def run(config: str, output: str = "./"):
         logger.error("Unable to parse config file: %s", err)
         exit(1)
 
+    # Convert user-friendly string to enum if provided
+    enum_runner_type = None
+    if runner_type:
+        if runner_type.lower() == 'krknctl':
+            enum_runner_type = KrknRunnerType.CLI_RUNNER
+        elif runner_type.lower() == 'krknhub':
+            enum_runner_type = KrknRunnerType.HUB_RUNNER
+
     genetic = GeneticAlgorithm(
         parsed_config,
-        output_dir=output
+        output_dir=output,
+        runner_type=enum_runner_type
     )
     genetic.simulate()
 
