@@ -27,8 +27,9 @@ Chaos AI consists of several key components:
 ### Prerequisites
 
 - Python 3.9+
-- Kubernetes or OpenShift cluster access
 - `uv` package manager (recommended) or `pip`
+- [podman](https://podman.io/)
+- Kubernetes or OpenShift cluster access file (kubeconfig)
 
 ### Setup Virtual Environment
 

@@ -20,7 +20,7 @@ def run_shell(command, do_not_log=False):
     '''
     Run shell command and get logs and statuscode in output.
     '''
-    logger.info("Running command: %s", command)
+    logger.debug("Running command: %s", command)
     logs = ""
     command = shlex.split(command)
     process = subprocess.Popen(
@@ -28,10 +28,10 @@ def run_shell(command, do_not_log=False):
     )
     for line in process.stdout:
         if not do_not_log:
-            logger.info("%s", line.rstrip())
+            logger.debug("%s", line.rstrip())
         logs += line
     process.wait()
-    logger.info("Run Status: %d", process.returncode)
+    logger.debug("Run Status: %d", process.returncode)
     return logs, process.returncode
 
 

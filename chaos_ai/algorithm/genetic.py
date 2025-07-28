@@ -24,11 +24,15 @@ class GeneticAlgorithm:
     '''
     A class implementing a Genetic Algorithm for scenario optimization.
     '''
-    def __init__(self, config: ConfigFile, output_dir: str):
+    def __init__(self, 
+        config: ConfigFile, 
+        output_dir: str,
+        runner_type: KrknRunnerType = None
+    ):
         self.krkn_client = KrknRunner(
             config,
             output_dir=output_dir,
-            runner_type=KrknRunnerType.CLI_RUNNER
+            runner_type=runner_type
         )
         self.output_dir = output_dir
         self.config = config

@@ -36,12 +36,41 @@ class KrknRunner:
         self,
         config: ConfigFile,
         output_dir: str,
-        runner_type: KrknRunnerType = KrknRunnerType.HUB_RUNNER,
+        runner_type: KrknRunnerType = None,
     ):
         self.config = config
         self.prom_client = self.__connect_prom_client()
-        self.runner_type = runner_type
         self.output_dir = output_dir
+        if runner_type is None:
+            self.runner_type = self.__check_runner_availability()
+        else:
+            self.runner_type = runner_type
+
+
+    def __check_runner_availability(self):
+        # Check if krknctl is available
+        krknctl_available = True
+        podman_available = True
+        _, returncode = run_shell("krknctl --version", do_not_log=True)
+        if returncode != 0:
+            krknctl_available = False
+            logger.warning("krknctl is not available.")
+        
+        # Check if podman is available
+        _, returncode = run_shell("podman --version", do_not_log=True)
+        if returncode != 0:
+            podman_available = False
+            logger.warning("podman is not available.")
+
+        if krknctl_available is False and podman_available is False:
+            raise Exception("krknctl and podman are not available. Please install krknctl and podman.")
+
+        if krknctl_available:
+            logger.debug("Using krknctl as runner.")
+            return KrknRunnerType.CLI_RUNNER
+        if podman_available:
+            logger.debug("Using krknhub as runner.")
+            return KrknRunnerType.HUB_RUNNER
 
     def run(self, scenario: BaseScenario, generation_id: int) -> CommandRunResult:
         logger.debug("Running scenario %s", scenario)
