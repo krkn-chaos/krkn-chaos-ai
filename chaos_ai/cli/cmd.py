@@ -16,8 +16,8 @@ def main():
 
 
 @main.command()
-@click.option('--config', '-c', help='Path to chaos ai config file.')
-@click.option('--output', '-o', help='Directory to save result.')
+@click.option('--config', '-c', help='Path to chaos AI config file.')
+@click.option('--output', '-o', help='Directory to save results.')
 def run(config: str, output: str = "./"):
     if config == '' or config is None:
         logger.warning("Config file invalid.")
