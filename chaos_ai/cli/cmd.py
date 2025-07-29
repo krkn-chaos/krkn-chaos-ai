@@ -17,6 +17,10 @@ def main():
 @main.command()
 @click.option('--config', '-c', help='Path to chaos AI config file.')
 @click.option('--output', '-o', help='Directory to save results.')
+@click.option('--format', '-f', help='Format of the output file.',
+    type=click.Choice(['json', 'yaml'], case_sensitive=False),
+    default='yaml'
+)
 @click.option('--runner-type', '-r', 
               type=click.Choice(['krknctl', 'krknhub'], case_sensitive=False),
               help='Type of chaos engine to use.', default=None)
@@ -31,6 +35,7 @@ def main():
 def run(ctx,
     config: str,
     output: str = "./",
+    format: str = 'yaml',
     runner_type: str = None,
     param: list[str] = None,
     verbose: int = 0       # Default to INFO level
@@ -65,6 +70,7 @@ def run(ctx,
     genetic = GeneticAlgorithm(
         parsed_config,
         output_dir=output,
+        format=format,
         runner_type=enum_runner_type
     )
     genetic.simulate()

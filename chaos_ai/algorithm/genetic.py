@@ -27,6 +27,7 @@ class GeneticAlgorithm:
     def __init__(self, 
         config: ConfigFile, 
         output_dir: str,
+        format: str,
         runner_type: KrknRunnerType = None
     ):
         self.krkn_client = KrknRunner(
@@ -37,6 +38,7 @@ class GeneticAlgorithm:
         self.output_dir = output_dir
         self.config = config
         self.population = []
+        self.format = format
 
         self.seen_population = {}  # Map between scenario and its result
         self.best_of_generation = []
@@ -257,7 +259,7 @@ class GeneticAlgorithm:
         output_dir = self.output_dir
         os.makedirs(output_dir, exist_ok=True)
         with open(
-            os.path.join(output_dir, "best_scenarios.json"),
+            os.path.join(output_dir, "best_scenarios.%s" % self.format),
             "w",
             encoding="utf-8"
         ) as f:
@@ -268,7 +270,10 @@ class GeneticAlgorithm:
                 scenario_result['start_time'] = (scenario_result['start_time']).isoformat()
                 scenario_result['end_time'] = (scenario_result['end_time']).isoformat()
                 best_generations[i] = scenario_result
-            json.dump(best_generations, f, indent=4)
+            if self.format == 'json':
+                json.dump(best_generations, f, indent=4)
+            elif self.format == 'yaml':
+                yaml.dump(best_generations, f, sort_keys=False)
 
     def save_log_file(self, job_id: str, log_data: str):
         dir_path = os.path.join(self.output_dir, 'logs')
@@ -282,6 +287,8 @@ class GeneticAlgorithm:
     def save_scenario_result(self, fitness_result: CommandRunResult):
         logger.debug("Saving scenario result for scenario %s", fitness_result.scenario_id)
         result = fitness_result.model_dump()
+        # Convert scenario to string representation and replace it in scenario.name
+        result['scenario']['name'] = str(fitness_result.scenario)
         generation_id = result['generation_id']
         result['job_id'] = fitness_result.scenario_id
 
@@ -294,12 +301,15 @@ class GeneticAlgorithm:
         result['start_time'] = (result['start_time']).isoformat()
         result['end_time'] = (result['end_time']).isoformat()
 
-        output_dir = os.path.join(self.output_dir, "json", "generation_%s" % generation_id)
+        output_dir = os.path.join(self.output_dir, self.format, "generation_%s" % generation_id)
         os.makedirs(output_dir, exist_ok=True)
 
         with open(
-            os.path.join(output_dir, "scenario_%s.json" % fitness_result.scenario_id),
-            "w",
-            encoding="utf-8"
-        ) as file_handler:
-            json.dump(result, file_handler, indent=4)
+                os.path.join(output_dir, "scenario_%s.%s" % (fitness_result.scenario_id, self.format)),
+                "w",
+                encoding="utf-8"
+            ) as file_handler:
+                if self.format == 'json':
+                    json.dump(result, file_handler, indent=4)
+                elif self.format == 'yaml':
+                    yaml.dump(result, file_handler, sort_keys=False)

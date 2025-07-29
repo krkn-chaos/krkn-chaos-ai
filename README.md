@@ -154,10 +154,12 @@ Usage: chaos_ai run [OPTIONS]
 Options:
   -c, --config TEXT               Path to chaos AI config file.
   -o, --output TEXT               Directory to save results.
+  -f, --format [json|yaml]        Format of the output file.
   -r, --runner-type [krknctl|krknhub]
                                   Type of chaos engine to use.
   -p, --param TEXT                Additional parameters for config file in
                                   key=value format.
+  -v, --verbose                   Increase verbosity of output.
   --help                          Show this message and exit.
 ```
 
