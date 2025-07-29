@@ -1,13 +1,20 @@
-from pydantic import BaseModel, Field
+import logging
 import datetime
 from enum import Enum
 from typing import Dict, List
+from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 from chaos_ai.models.base_scenario import BaseScenario
 from chaos_ai.models.config import HealthCheckResult
 from chaos_ai.utils import id_generator
 
+
 auto_id = id_generator()
+
+@dataclass
+class AppContext:
+    verbose: int = logging.INFO
 
 class FitnessScoreResult(BaseModel):
     id: int

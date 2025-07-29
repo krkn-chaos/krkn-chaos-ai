@@ -301,7 +301,7 @@ class KrknRunner:
                 do_not_log=True,
             )
 
-        logger.info("Prometheus URL: %s", url)
+        logger.debug("Prometheus URL: %s", url)
 
         return KrknPrometheus(f"https://{url}", token.strip())
 

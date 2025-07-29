@@ -1,14 +1,12 @@
+import logging
 import os
 import click
 from pydantic import ValidationError
 from chaos_ai.utils.fs import read_config_from_file
-from chaos_ai.utils.logger import get_module_logger
-from chaos_ai.models.app import KrknRunnerType
+from chaos_ai.utils.logger import get_module_logger, verbosity_to_level
+from chaos_ai.models.app import AppContext, KrknRunnerType
 
 from chaos_ai.algorithm.genetic import GeneticAlgorithm
-
-
-logger = get_module_logger(__name__)
 
 
 @click.group()
@@ -28,7 +26,19 @@ def main():
     help='Additional parameters for config file in key=value format.',
     default=[]
 )
-def run(config: str, output: str = "./", runner_type: str = None, param: list[str] = None):
+@click.option('-v', '--verbose', count=True, help='Increase verbosity of output.')
+@click.pass_context
+def run(ctx,
+    config: str,
+    output: str = "./",
+    runner_type: str = None,
+    param: list[str] = None,
+    verbose: int = 0       # Default to INFO level
+):
+    ctx.obj = AppContext(verbose=verbosity_to_level(verbose))
+
+    logger = get_module_logger(__name__)
+
     if config == '' or config is None:
         logger.warning("Config file invalid.")
         exit(1)
