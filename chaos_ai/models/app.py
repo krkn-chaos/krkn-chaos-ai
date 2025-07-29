@@ -1,11 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import datetime
 from enum import Enum
 from typing import Dict, List
 
 from chaos_ai.models.base_scenario import BaseScenario
 from chaos_ai.models.config import HealthCheckResult
+from chaos_ai.utils import id_generator
 
+auto_id = id_generator()
 
 class FitnessScoreResult(BaseModel):
     id: int
@@ -20,6 +22,7 @@ class FitnessResult(BaseModel):
 
 class CommandRunResult(BaseModel):
     generation_id: int      # Which generation was scenario referred
+    scenario_id: int = Field(default_factory=lambda: next(auto_id))        # Scenario ID
     scenario: BaseScenario  # scenario details
     cmd: str                # Krkn-Hub command 
     log: str                # Log details or path to log file

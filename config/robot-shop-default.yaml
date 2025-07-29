@@ -1,6 +1,6 @@
 kubeconfig_file_path: "./tmp/kubeconfig.yaml"
 
-generations: 1
+generations: 2
 population_size: 2
 composition_rate: 0
 population_injection_rate: 0

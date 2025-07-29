@@ -287,7 +287,8 @@ class KrknRunner:
         url = os.getenv("PROMETHEUS_URL", "")
         if url == "":
             prom_spec_json, _ = run_shell(
-                f"kubectl --kubeconfig={self.config.kubeconfig_file_path} -n openshift-monitoring get route -l app.kubernetes.io/name=thanos-query -o json"
+                f"kubectl --kubeconfig={self.config.kubeconfig_file_path} -n openshift-monitoring get route -l app.kubernetes.io/name=thanos-query -o json",
+                do_not_log=True,
             )
             prom_spec_json = json.loads(prom_spec_json)
             url = prom_spec_json["items"][0]["spec"]["host"]

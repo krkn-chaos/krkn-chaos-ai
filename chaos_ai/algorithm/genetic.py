@@ -14,7 +14,6 @@ from chaos_ai.models.base_scenario import (
     ScenarioFactory
 )
 from chaos_ai.models.config import ConfigFile
-from chaos_ai.utils import id_generator
 from chaos_ai.utils.logger import get_module_logger
 from chaos_ai.chaos_engines.krkn_runner import KrknRunner
 
@@ -41,7 +40,6 @@ class GeneticAlgorithm:
 
         self.seen_population = {}  # Map between scenario and its result
         self.best_of_generation = []
-        self.job_id_generator = id_generator()
 
         logger.info("CONFIG:")
         logger.info("%s", json.dumps(self.config.model_dump(), indent=2))
@@ -137,8 +135,7 @@ class GeneticAlgorithm:
             scenario.generation_id = generation_id
             return scenario
         scenario_result = self.krkn_client.run(scenario, generation_id)
-        job_id = next(self.job_id_generator)
-        self.save_scenario_result(job_id, scenario_result)
+        self.save_scenario_result(scenario_result)
         return scenario_result
 
     def mutate(self, scenario: BaseScenario):
@@ -282,15 +279,15 @@ class GeneticAlgorithm:
             f.write(log_data)
         return log_save_path
 
-    def save_scenario_result(self, job_id: int, fitness_result: CommandRunResult):
-        logger.debug("Saving scenario result for job %s", job_id)
+    def save_scenario_result(self, fitness_result: CommandRunResult):
+        logger.debug("Saving scenario result for scenario %s", fitness_result.scenario_id)
         result = fitness_result.model_dump()
         generation_id = result['generation_id']
-        result['job_id'] = job_id
+        result['job_id'] = fitness_result.scenario_id
 
         # Store log in a log file and update log location
         result['log'] = self.save_log_file(
-            str(job_id),
+            str(fitness_result.scenario_id),
             result['log']
         )
         # Convert timestamps to ISO string
@@ -301,7 +298,7 @@ class GeneticAlgorithm:
         os.makedirs(output_dir, exist_ok=True)
 
         with open(
-            os.path.join(output_dir, "scenario_%s.json" % job_id),
+            os.path.join(output_dir, "scenario_%s.json" % fitness_result.scenario_id),
             "w",
             encoding="utf-8"
         ) as file_handler:

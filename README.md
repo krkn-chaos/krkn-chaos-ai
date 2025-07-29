@@ -67,7 +67,7 @@ oc config set-context --current --namespace=$DEMO_NAMESPACE
 ./scripts/setup-nginx.sh
 
 # Test application endpoints
-./tests/test-nginx-routes.sh
+./scripts/test-nginx-routes.sh
 
 export HOST="http://$(kubectl get service rs -o json | jq -r '.status.loadBalancer.ingress[0].hostname')"
 ```
