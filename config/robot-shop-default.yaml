@@ -11,6 +11,8 @@ fitness_function:
   include_krkn_failure: true
 
 health_checks:
+  stop_watcher_on_failure: false
+  applications:
   - name: cart
     url: "$HOST/cart/add/1/Watson/1"
   - name: catalogue

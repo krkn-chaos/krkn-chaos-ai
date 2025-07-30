@@ -15,7 +15,8 @@ from chaos_ai.models.base_scenario import (
     CompositeDependency,
     ScenarioFactory
 )
-from chaos_ai.utils.fs import run_shell, env_is_truthy
+from chaos_ai.utils import run_shell
+from chaos_ai.utils.fs import env_is_truthy
 from chaos_ai.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)

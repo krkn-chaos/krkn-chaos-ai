@@ -14,6 +14,7 @@ from chaos_ai.models.base_scenario import (
     ScenarioFactory
 )
 from chaos_ai.models.config import ConfigFile
+from chaos_ai.reporter.health_check_reporter import HealthCheckReporter
 from chaos_ai.utils.logger import get_module_logger
 from chaos_ai.chaos_engines.krkn_runner import KrknRunner
 
@@ -241,6 +242,7 @@ class GeneticAlgorithm:
         # TODO: Create a single result file (results.json) that contains summary of all the results
         self.save_config()
         self.save_best_generations()
+        self.save_health_check_report()
 
     def save_config(self):
         logger.info("Saving config file to config.yaml")
@@ -313,3 +315,8 @@ class GeneticAlgorithm:
                     json.dump(result, file_handler, indent=4)
                 elif self.format == 'yaml':
                     yaml.dump(result, file_handler, sort_keys=False)
+
+    def save_health_check_report(self):
+        logger.debug("Saving health check report")
+        reporter = HealthCheckReporter(self.output_dir)
+        reporter.analyze_and_save_report(self.seen_population.values())

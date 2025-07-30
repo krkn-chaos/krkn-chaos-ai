@@ -94,9 +94,14 @@ fitness_function:
 
 # Health endpoints to monitor
 health_checks:
-  - url: "$HOST/cart/add/1/Watson/1"
-  - url: "$HOST/catalogue/categories"
-  - url: "$HOST/shipping/codes"
+  stop_watcher_on_failure: false
+  applications:
+  - name: cart
+    url: "$HOST/cart/add/1/Watson/1"
+  - name: catalogue
+    url: "$HOST/catalogue/categories"
+  - name: shipping
+    url: "$HOST/shipping/codes"
 
 # Chaos scenarios to evolve
 scenario:

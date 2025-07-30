@@ -82,7 +82,7 @@ class FitnessFunction(BaseModel):
         return self
 
 
-class HealthCheckConfig(BaseModel):
+class HealthCheckApplicationConfig(BaseModel):
     '''
     Health check configuration for the application.
     This is used to check the health of the application.
@@ -93,6 +93,9 @@ class HealthCheckConfig(BaseModel):
     timeout: int = 5   # in seconds
     interval: int = 2   # in seconds
 
+class HealthCheckConfig(BaseModel):
+    stop_watcher_on_failure: bool = False
+    applications: List[HealthCheckApplicationConfig] = []
 
 class HealthCheckResult(BaseModel):
     name: str
@@ -118,6 +121,6 @@ class ConfigFile(BaseModel):
     population_injection_size: int = const.POPULATION_INJECTION_SIZE    # What's the size of random samples that gets added to new population
 
     fitness_function: FitnessFunction
-    health_checks: List[HealthCheckConfig] = []
+    health_checks: HealthCheckConfig
 
     scenario: ScenarioConfig = ScenarioConfig()

@@ -15,12 +15,12 @@ import requests
 from typing import List, Dict
 
 from chaos_ai.utils.logger import get_module_logger
-from chaos_ai.models.config import HealthCheckConfig, HealthCheckResult
+from chaos_ai.models.config import HealthCheckApplicationConfig, HealthCheckConfig, HealthCheckResult
 
 logger = get_module_logger(__name__)
 
 class HealthCheckWatcher:
-    def __init__(self, config: List[HealthCheckConfig]):
+    def __init__(self, config: HealthCheckConfig):
         self.config = config
         self._stop_event = threading.Event()
         self._threads: List[threading.Thread] = []
@@ -29,13 +29,13 @@ class HealthCheckWatcher:
 
     def run(self):
         # Start a thread for each health check
-        logger.info(f"Starting health check watcher for {len(self.config)} health checks")
-        for health_check in self.config:
+        logger.debug(f"Starting health check watcher for {len(self.config.applications)} applications")
+        for health_check in self.config.applications:
             t = threading.Thread(target=self.run_health_check, args=(health_check,))
             t.start()
             self._threads.append(t)
 
-    def run_health_check(self, health_check: HealthCheckConfig):
+    def run_health_check(self, health_check: HealthCheckApplicationConfig):
         # Each thread gets its own private results list
         thread_id = threading.current_thread().ident
         thread_results = []
@@ -65,7 +65,7 @@ class HealthCheckWatcher:
             # Store in thread-private list - NO LOCKS, NO CONTENTION!
             thread_results.append(result)
 
-            if not success:
+            if not success and self.config.stop_watcher_on_failure:
                 self._stop_event.set()
                 break
 
