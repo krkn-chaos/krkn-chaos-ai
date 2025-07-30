@@ -176,14 +176,21 @@ Chaos AI saves results in the specified output directory:
 .
 └── results/
     ├── yaml/
+    │   ├── reports/
+    │   │   ├── health_check_report.csv
+    │   │   └── graphs/
+    │   │       ├── scenario_1.png
+    │   │       ├── scenario_2.png
+    │   │       └── ...
     │   ├── generation_0/
-    │   │   ├── scenario_1.json
-    │   │   └── scenario_2.json
+    │   │   ├── scenario_1.yaml
+    │   │   ├── scenario_2.yaml
+    │   │   └── ...
     │   └── generation_1/
     │       └── ...
     ├── log/
-    │   ├── scenario_1.json
-    │   ├── scenario_2.json
+    │   ├── scenario_1.log
+    │   ├── scenario_2.log
     │   └── ...
     ├── best_scenarios.json
     └── config.yaml

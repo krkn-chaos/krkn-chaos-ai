@@ -97,9 +97,9 @@ class HealthCheckReporter:
         # Plot 2: Heatmap for success
         green_white = LinearSegmentedColormap.from_list("green_red", ["red", "green"])
         pivot = df.pivot_table(index="application", columns="timestamp_str", values="success", fill_value=1)
-        sns.heatmap(pivot, cmap=green_white, cbar=True, ax=axes[1], linewidths=0.5, linecolor='gray', annot=False)
+        sns.heatmap(pivot, cmap=green_white, cbar=True, ax=axes[1], linewidths=0.3, linecolor='gray', annot=False)
         axes[1].set_title("Success per Application Over Time", fontsize=14) 
-        axes[1].set_xlabel("Time (mm:ss)", fontsize=12)
+        # axes[1].set_xlabel("Time (mm:ss)", fontsize=12)
         axes[1].set_ylabel("Application", fontsize=12)
         axes[1].tick_params(axis='x', rotation=45, labelsize=10)
         axes[1].tick_params(axis='y', labelsize=10)
