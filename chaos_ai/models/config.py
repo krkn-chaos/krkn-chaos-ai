@@ -90,7 +90,7 @@ class HealthCheckApplicationConfig(BaseModel):
     name: str
     url: str
     status_code: int = 200  # Expected status code
-    timeout: int = 5   # in seconds
+    timeout: int = 4   # in seconds
     interval: int = 2   # in seconds
 
 class HealthCheckConfig(BaseModel):

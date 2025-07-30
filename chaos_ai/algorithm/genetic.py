@@ -44,7 +44,10 @@ class GeneticAlgorithm:
         self.seen_population = {}  # Map between scenario and its result
         self.best_of_generation = []
 
-        logger.debug("CONFIG:")
+        self.reporter = HealthCheckReporter(self.output_dir)
+
+        logger.debug("CONFIG")
+        logger.debug("--------------------------------------------------------")
         logger.debug("%s", json.dumps(self.config.model_dump(), indent=2))
 
     def simulate(self):
@@ -138,7 +141,9 @@ class GeneticAlgorithm:
             scenario.generation_id = generation_id
             return scenario
         scenario_result = self.krkn_client.run(scenario, generation_id)
+        # Save scenario result
         self.save_scenario_result(scenario_result)
+        self.reporter.plot_report(scenario_result)
         return scenario_result
 
     def mutate(self, scenario: BaseScenario):
@@ -317,6 +322,4 @@ class GeneticAlgorithm:
                     yaml.dump(result, file_handler, sort_keys=False)
 
     def save_health_check_report(self):
-        logger.debug("Saving health check report")
-        reporter = HealthCheckReporter(self.output_dir)
-        reporter.analyze_and_save_report(self.seen_population.values())
+        self.reporter.save_report(self.seen_population.values())
