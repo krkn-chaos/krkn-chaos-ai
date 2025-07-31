@@ -5,6 +5,7 @@ import datetime
 import tempfile
 
 from krkn_lib.prometheus.krkn_prometheus import KrknPrometheus
+from chaos_ai.chaos_engines.health_check_watcher import HealthCheckWatcher
 from chaos_ai.models.app import CommandRunResult, FitnessResult, FitnessScoreResult, KrknRunnerType
 from chaos_ai.models.config import ConfigFile, FitnessFunctionType
 from chaos_ai.models.base_scenario import (
@@ -14,7 +15,8 @@ from chaos_ai.models.base_scenario import (
     CompositeDependency,
     ScenarioFactory
 )
-from chaos_ai.utils.fs import run_shell, env_is_truthy
+from chaos_ai.utils import run_shell
+from chaos_ai.utils.fs import env_is_truthy
 from chaos_ai.utils.logger import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -35,12 +37,42 @@ class KrknRunner:
         self,
         config: ConfigFile,
         output_dir: str,
-        runner_type: KrknRunnerType = KrknRunnerType.HUB_RUNNER,
+        runner_type: KrknRunnerType = None,
     ):
         self.config = config
         self.prom_client = self.__connect_prom_client()
-        self.runner_type = runner_type
         self.output_dir = output_dir
+        if runner_type is None:
+            self.runner_type = self.__check_runner_availability()
+        else:
+            logger.debug("Using user provided runner type: %s", runner_type)
+            self.runner_type = runner_type
+
+
+    def __check_runner_availability(self):
+        # Check if krknctl is available
+        krknctl_available = True
+        podman_available = True
+        _, returncode = run_shell("krknctl --version", do_not_log=True)
+        if returncode != 0:
+            krknctl_available = False
+            logger.warning("krknctl is not available.")
+        
+        # Check if podman is available
+        _, returncode = run_shell("podman --version", do_not_log=True)
+        if returncode != 0:
+            podman_available = False
+            logger.warning("podman is not available.")
+
+        if krknctl_available is False and podman_available is False:
+            raise Exception("krknctl and podman are not available. Please install krknctl and podman.")
+
+        if krknctl_available:
+            logger.debug("Using krknctl as runner.")
+            return KrknRunnerType.CLI_RUNNER
+        if podman_available:
+            logger.debug("Using krknhub as runner.")
+            return KrknRunnerType.HUB_RUNNER
 
     def run(self, scenario: BaseScenario, generation_id: int) -> CommandRunResult:
         logger.debug("Running scenario %s", scenario)
@@ -57,13 +89,23 @@ class KrknRunner:
         else:
             raise NotImplementedError("Scenario unable to run")
 
+        health_check_watcher = HealthCheckWatcher(self.config.health_checks)
+
         # Run command and fetch result
         if env_is_truthy('MOCK_RUN'):
             # Used for running mock tests
             log, returncode = "", 0
         else:
             # TODO: How to capture logs from composite run scenario
+            
+            # Start watching application urls for health checks
+            health_check_watcher.run()
+
+            # Run command
             log, returncode = run_shell(command)
+            
+            # Stop watching application urls for health checks
+            health_check_watcher.stop()
 
         end_time = datetime.datetime.now()
 
@@ -101,7 +143,8 @@ class KrknRunner:
             returncode=returncode,
             start_time=start_time,
             end_time=end_time,
-            fitness_result=fitness_result
+            fitness_result=fitness_result,
+            health_check_results=health_check_watcher.get_results()
         )
 
     def runner_command(self, scenario: Scenario):
@@ -245,7 +288,8 @@ class KrknRunner:
         url = os.getenv("PROMETHEUS_URL", "")
         if url == "":
             prom_spec_json, _ = run_shell(
-                f"kubectl --kubeconfig={self.config.kubeconfig_file_path} -n openshift-monitoring get route -l app.kubernetes.io/name=thanos-query -o json"
+                f"kubectl --kubeconfig={self.config.kubeconfig_file_path} -n openshift-monitoring get route -l app.kubernetes.io/name=thanos-query -o json",
+                do_not_log=True,
             )
             prom_spec_json = json.loads(prom_spec_json)
             url = prom_spec_json["items"][0]["spec"]["host"]
@@ -258,7 +302,7 @@ class KrknRunner:
                 do_not_log=True,
             )
 
-        logger.info("Prometheus URL: %s", url)
+        logger.debug("Prometheus URL: %s", url)
 
         return KrknPrometheus(f"https://{url}", token.strip())
 

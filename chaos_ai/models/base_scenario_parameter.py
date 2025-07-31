@@ -50,10 +50,12 @@ class NamePatternParameter(BaseParameter):
 class DisruptionCountParameter(BaseParameter):
     name: str = "DISRUPTION_COUNT"
     value: int = 1
-    max_value: int = 25  # some arbitrary value
+    max_value: int = 1  # some arbitrary value
 
     def mutate(self):
-        self.value = random.randint(1, self.max_value)
+        # TODO: Detect number of pods of same type, and set the max_value
+        pass
+        # self.value = random.randint(1, self.max_value)
 
 
 class KillTimeoutParameter(BaseParameter):
