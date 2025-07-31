@@ -55,6 +55,10 @@ class HealthCheckReporter:
 
 
     def plot_report(self, result: CommandRunResult):
+        if len(result.health_check_results) == 0:
+            logger.debug("No health check results to plot")
+            return
+
         logger.debug("Plotting health check result")
         output_dir = os.path.join(self.output_dir, "graphs")
         os.makedirs(output_dir, exist_ok=True)
