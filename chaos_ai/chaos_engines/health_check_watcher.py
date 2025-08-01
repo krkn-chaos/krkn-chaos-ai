@@ -13,6 +13,7 @@ import threading
 import time
 import requests
 from typing import List, Dict
+import numpy as np
 
 from chaos_ai.utils.logger import get_module_logger
 from chaos_ai.models.config import HealthCheckApplicationConfig, HealthCheckConfig, HealthCheckResult
@@ -86,3 +87,27 @@ class HealthCheckWatcher:
             results[url].extend(thread_results)
                 
         return dict(results)
+
+    def summarize_success_rate(self, results: List[HealthCheckResult]) -> float:
+        total = len(results)
+        if total == 0:
+            return 0
+        failed = sum(1 for r in results if not r.success)
+        return failed / total
+    
+    def summarize_response_time(self, results: List[HealthCheckResult]) -> float:
+        response_times = []
+        for result in results:
+            if result.success:
+                response_times.append(result.response_time)
+        
+        if len(response_times) < 4: # Not enough data to calculate outliers
+            return 0
+
+        q1 = np.percentile(response_times, 25)
+        q3 = np.percentile(response_times, 75)
+        iqr = q3 - q1
+        upper_bound = q3 + (1.5 * iqr)
+        
+        outliers = [t for t in response_times if t > upper_bound]
+        return len(outliers)
